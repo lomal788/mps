@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "JvaZhvnRNNhGCxeQ3VTILEDAle+uVXAqcHI/UVxAxR/H2saDkhozujNcUjonpbb48WBBuMXJBpVEkmdY7cBTOg==",
+  "success": true,
+  "projectFilePath": "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\graphics_bfres2gltf.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\lomal\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

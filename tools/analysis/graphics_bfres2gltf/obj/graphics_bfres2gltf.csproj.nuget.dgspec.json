@@ -1,0 +1,147 @@
+{
+  "format": 1,
+  "restore": {
+    "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\graphics_bfres2gltf.csproj": {}
+  },
+  "projects": {
+    "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\BfresLibrary.csproj": {
+      "version": "1.6.0",
+      "restore": {
+        "projectUniqueName": "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\BfresLibrary.csproj",
+        "projectName": "BfresLibrary",
+        "projectPath": "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\BfresLibrary.csproj",
+        "packagesPath": "C:\\Users\\lomal\\.nuget\\packages\\",
+        "outputPath": "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\obj\\",
+        "projectStyle": "PackageReference",
+        "crossTargeting": true,
+        "configFilePaths": [
+          "C:\\Users\\lomal\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net48",
+          "netstandard2.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "targetAlias": "net48",
+            "projectReferences": {}
+          },
+          "netstandard2.0": {
+            "targetAlias": "netstandard2.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net48": {
+          "targetAlias": "net48",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.306\\RuntimeIdentifierGraph.json"
+        },
+        "netstandard2.0": {
+          "targetAlias": "netstandard2.0",
+          "dependencies": {
+            "NETStandard.Library": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.0.3, )",
+              "autoReferenced": true
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.306\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\graphics_bfres2gltf.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\graphics_bfres2gltf.csproj",
+        "projectName": "graphics_bfres2gltf",
+        "projectPath": "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\graphics_bfres2gltf.csproj",
+        "packagesPath": "C:\\Users\\lomal\\.nuget\\packages\\",
+        "outputPath": "F:\\dev\\mps\\web\\tools\\analysis\\graphics_bfres2gltf\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\lomal\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net7.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net7.0": {
+            "targetAlias": "net7.0",
+            "projectReferences": {
+              "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\BfresLibrary.csproj": {
+                "projectPath": "F:\\dev\\mps\\tools\\oss\\BfresLibrary\\BfresLibrary\\BfresLibrary.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net7.0": {
+          "targetAlias": "net7.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.306\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

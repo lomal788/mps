@@ -1,0 +1,150 @@
+{
+ "pc01": {
+  "key": "pc01_mario",
+  "name": "마리오",
+  "glb": "pc01/model/pc01_mario.glb",
+  "motions": "pc01/motions.json",
+  "eyeTex": "pc01/tex/pc01_eye_alb.png",
+  "images": [
+   "pc01_body_alb.png",
+   "pc01_body_rgh__pc01_body_mtl.mr.png",
+   "pc01_body_nml.png",
+   "pc01_eyelid_alb.png",
+   "pc01_eyelid_rgh__pc01_eyelid_mtl.mr.png",
+   "pc01_eyelid_nml.png"
+  ]
+ },
+ "pc02": {
+  "key": "pc02_luigi",
+  "name": "루이지",
+  "glb": "pc02/model/pc02_luigi.glb",
+  "motions": "pc02/motions.json",
+  "eyeTex": "pc02/tex/pc02_eye_alb.png",
+  "images": [
+   "pc02_body_alb.png",
+   "pc02_body_rgh__pc02_body_mtl.mr.png",
+   "pc02_body_nml.png",
+   "pc02_eyelid_alb.png",
+   "pc02_eyelid_rgh__none.mr.png",
+   "pc02_eyelid_nml.png"
+  ]
+ },
+ "pc03": {
+  "key": "pc03_peach",
+  "name": "피치",
+  "glb": "pc03/model/pc03_peach.glb",
+  "motions": "pc03/motions.json",
+  "eyeTex": "pc03/tex/pc03_eye_alb.png",
+  "images": [
+   "pc03_body_alb.png",
+   "pc03_body_rgh__pc03_body_mtl.mr.png",
+   "pc03_body_nml.png",
+   "pc03_eyelid_alb.png",
+   "pc03_eyelid_rgh__pc03_eyelid_mtl.mr.png",
+   "pc03_eyelid_nml.png",
+   "pc03_eyelash_alb.png"
+  ]
+ },
+ "pc04": {
+  "key": "pc04_daisy",
+  "name": "데이지",
+  "glb": "pc04/model/pc04_daisy.glb",
+  "motions": "pc04/motions.json",
+  "eyeTex": "pc04/tex/pc04_eye_alb.png",
+  "images": [
+   "pc04_body_alb.png",
+   "pc04_body_rgh__pc04_body_mtl.mr.png",
+   "pc04_body_nml.png",
+   "pc04_eyelid_alb.png",
+   "pc04_eyelid_rgh__none.mr.png",
+   "pc04_eyelid_nml.png",
+   "pc04_eyelash_alb.png"
+  ]
+ },
+ "pc05": {
+  "key": "pc05_wario",
+  "name": "와리오",
+  "glb": "pc05/model/pc05_wario.glb",
+  "motions": "pc05/motions.json",
+  "eyeTex": "pc05/tex/pc05_eye_alb.png",
+  "images": [
+   "pc05_body_alb.png",
+   "pc05_body_rgh__pc05_body_mtl.mr.png",
+   "pc05_body_nml.png"
+  ]
+ },
+ "pc06": {
+  "key": "pc06_waluigi",
+  "name": "와루이지",
+  "glb": "pc06/model/pc06_waluigi.glb",
+  "motions": "pc06/motions.json",
+  "eyeTex": "pc06/tex/pc06_eye_alb.png",
+  "images": [
+   "pc06_body_alb.png",
+   "pc06_body_rgh__pc06_body_mtl.mr.png",
+   "pc06_body_nml.png",
+   "pc06_eyelid_alb.png",
+   "pc06_eyelid_rgh__none.mr.png",
+   "pc06_eyelid_nml.png",
+   "obj55_rose_alb.png",
+   "obj55_rose_rgh__none.mr.png",
+   "obj55_rose_nml.png"
+  ]
+ },
+ "pc07": {
+  "key": "pc07_yoshi",
+  "name": "요시",
+  "glb": "pc07/model/pc07_yoshi.glb",
+  "motions": "pc07/motions.json",
+  "eyeTex": "pc07/tex/pc07_eye_alb.png",
+  "images": [
+   "pc07_body_alb.png",
+   "pc07_body_rgh__pc07_body_mtl.mr.png",
+   "pc07_body_nml.png"
+  ]
+ },
+ "pc11": {
+  "key": "pc11_rosetta",
+  "name": "로젤리나",
+  "glb": "pc11/model/pc11_rosetta.glb",
+  "motions": "pc11/motions.json",
+  "eyeTex": "pc11/tex/pc11_eye_alb.png",
+  "images": [
+   "pc11_body_alb.png",
+   "pc11_body_rgh__pc11_body_mtl.mr.png",
+   "pc11_body_nml.png",
+   "pc11_eyelid_alb.png",
+   "pc11_eyelid_rgh__none.mr.png",
+   "pc11_eyelid_nml.png",
+   "pc11_eyelash_alb.png"
+  ]
+ },
+ "pc12": {
+  "key": "pc12_dk",
+  "name": "동키콩",
+  "glb": "pc12/model/pc12_dk.glb",
+  "motions": "pc12/motions.json",
+  "eyeTex": "pc12/tex/pc12_eye_alb.png",
+  "images": [
+   "pc12_body_alb.png",
+   "pc12_body_rgh__pc12_body_mtl.mr.png",
+   "pc12_body_nml.png",
+   "pc12_eyelid_alb.png",
+   "pc12_eyelid_rgh__none.mr.png",
+   "pc12_eyelid_nml.png"
+  ]
+ },
+ "pc13": {
+  "key": "pc13_catherine",
+  "name": "캐서린",
+  "glb": "pc13/model/pc13_catherine.glb",
+  "motions": "pc13/motions.json",
+  "eyeTex": "pc13/tex/pc13_eye_alb.png",
+  "images": [
+   "pc13_body_alb.png",
+   "pc13_body_rgh__pc13_body_mtl.mr.png",
+   "pc13_body_nml.png",
+   "pc13_body_rgh__none.mr.png"
+  ]
+ }
+}
