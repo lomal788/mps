@@ -1,0 +1,286 @@
+{
+ "source": "web/tools/analysis/hsmg402_fluid_assets.py (hsmg402_fluid.fmdb fld_fluid, chara BNTX BC4_SNORM)",
+ "params": {
+  "fluid_render_enable": 1,
+  "fluid_clear_enable": 0,
+  "fluid_texture_clear_enable": 1,
+  "fluid_generate_normal_enable": 1,
+  "fluid_texture_width": 512,
+  "fluid_texture_height": 512,
+  "fluid_simulation_enable": 0,
+  "fluid_world_width": 19,
+  "fluid_world_height": 0.3,
+  "fluid_simulation_attenuation": 0.9,
+  "fluid_simulation_dissipation": 2,
+  "fluid_heightmap_add_value": 0.00015,
+  "fluid_world_position": [
+   0,
+   0,
+   0
+  ]
+ },
+ "clear": "tex/hsmg402_fld_clear.png",
+ "snowballBrush": "tex/hsmg402_fluid0_hgt.png",
+ "brushes": {
+  "pc01": {
+   "L_footfluid_m": {
+    "tex": "pc01_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc01_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc01_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc02": {
+   "L_footfluid_m": {
+    "tex": "pc02_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc02_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc02_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc03": {
+   "L_footfluid_m": {
+    "tex": "pc03_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc03_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc03_body_hgt.png",
+    "u1x": 0.35,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc04": {
+   "L_footfluid_m": {
+    "tex": "pc04_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc04_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc04_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc05": {
+   "L_footfluid_m": {
+    "tex": "pc05_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc05_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc05_body_hgt.png",
+    "u1x": 0.35,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc06": {
+   "L_footfluid_m": {
+    "tex": "pc06_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc06_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc06_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc07": {
+   "L_footfluid_m": {
+    "tex": "pc07_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc07_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc07_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc11": {
+   "L_footfluid_m": {
+    "tex": "pc11_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc11_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc11_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc12": {
+   "L_footfluid_m": {
+    "tex": "pc12_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc12_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc12_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  },
+  "pc13": {
+   "L_footfluid_m": {
+    "tex": "pc13_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "R_footfluid_m": {
+    "tex": "pc13_foot_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.8110235929489136,
+    "max": 0.0,
+    "center": -0.787401556968689
+   },
+   "bodyfluid_m": {
+    "tex": "pc13_body_hgt.png",
+    "u1x": 0.5,
+    "heightScale": 0.5,
+    "min": -0.4173228442668915,
+    "max": 0.27559053897857666,
+    "center": -0.3205849230289459
+   }
+  }
+ }
+}

@@ -990,12 +990,24 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 
 식·주소·검산은 [../engine/07_camera_lighting.md](../engine/07_camera_lighting.md)(mps 판)에 있다. 여기에는 hsmg402 값으로 정리한다.
 
-- 평행광 `dir_light00`: color (0.570, 1.220, 1.5)(세기 곱 없이 그대로), 위치 (4.1, 5, −11.5). **`lightRotation` (30, −25) = (x°, y°) → L(면→광원) = (−cos x·sin y, sin x, −cos x·cos y) = (0.366, 0.5, −0.785)**, 빛은 무대 뒤(−Z)·위·오른쪽에서 카메라 쪽으로 온다 [판독]. lightPosition 방향과 9.1°, IBL rad 큐브의 해와 7.9° [재구현 계산].
+- 평행광 `dir_light00`: color (0.570, 1.220, 1.5)(세기 곱 없이 그대로 Env UBO +0x10, 셰이더 확산에 1/π 없음 [판독]), 위치 (4.1, 5, −11.5). **`lightRotation` (30, −25) = (x°, y°) → L(면→광원) = (−cos x·sin y, sin x, −cos x·cos y) = (0.366, 0.5, −0.785)**, 빛은 무대 뒤(−Z)·위·오른쪽에서 카메라 쪽으로 온다 [판독]. lightPosition 방향과 9.1°, IBL rad 큐브의 해와 7.9° [재구현 계산].
 - 그림자: 고정 정사영 l −17 r 15 t 12 b −8 n 1 f 30, 빛 행렬 기준(Z = L, X ≈ 세계 X(0.931, −0.197, 0.309), Y = (0, −0.843, −0.537)) [판독]. bias 0.5·normalBias 1 의 단위 [미확정].
 - `env_mt`: IBL rad/irr/chara_rad/chara_irr(배율 1, 회전 0), 큐브 조회 방향 (x, y, −z) [판독]. **안개 `fog_param` = (시작 60, 끝 1000, 배율 0.95)**: 안개 양 = 1 − sat(0.95·(1000 − d)/940), d = 카메라 거리, 색 = irr 큐브(fog_cubemap 1) → 무대(d≈30) 2%, d 200 에서 19% [판독 + 재구현 계산]. fog_color 는 모드 1 에서만 쓰인다.
 - `post_mt`(filter_order 1): 블룸 v4(문턱 0.7·세기 1, 휘도 문턱) → 합성 패스(노출 x = c·1 + 0 → **톤맵 타입 5 = 유리식 곡선** → **LUT: g = t^(1/2.2) 로 hsmg402_lut 100% (`lut_blend` 0 = 둘째 LUT 섞는 비율 0)** → **비네트 ×(1 − 0.2·|ndc|)**) → FXAA(상대 0.125·0.7152, 절대 0.0833) [판독].
-- 눈 자국 `fluid.fmdb`: 512² 높이장, 월드 19×19(중심 원점), 깊이 0.3, 시뮬레이션 꺼짐, 초기 텍스처 `fld_clear`, add 0.00015. `snowball_fluid`(반지름 0.672, 붓 `fluid0_hgt`)가 지나간 자리에 쓰는 것으로 [추정]. 쓰기 식 [미확정].
-- `SetSystemScaleVec((2,1,2))`·`FluidMaterialParamChange((0,1,1,1))`(시작)과 착지 후 `(1,1,1)`·`(1,1,1,1)`: 플레이어 표현 값으로 [추정]. 물리 판정에 영향을 주는지 [미확정].
+- **화면 색** [재구현 계산 + 참고 이미지]: 원본 무대 눈은 수치로도 하늘색이다. 무대 한 점을 원본 식으로 계산하면 sRGB 양지 (144, 219, 242)·그늘 (115, 170, 218), 공식 스크린샷 무대 중앙 (144, 220, 242)·중앙값 (138, 211, 234). 고치기 전 웹 (130, 205, 231)/(66, 120, 165) 이 어두웠던 원인은 눈 그래프의 그늘 램프(0,0) 몫과 확산 IBL 둘째 항 램프(0.6)·irr(카메라 시선) 누락(7.11) — 단계표는 [../engine/07_camera_lighting.md](../engine/07_camera_lighting.md) 12절, 도구 `web/tools/analysis/hsmg402_color_calc.py`.
+- 오로라 위쪽의 딱딱한 청록 띠는 `sky_grad_mt`(더하기)였다: 원본 샘플러 wrapV = Clamp 인데 웹이 Repeat 로 덮어써 윗변 v = −0.206 이 0.794 로 감겨 알파 0.84 가 됐다(Clamp 면 0.004) [데이터 + 재구현 계산] → glb 샘플러 그대로 쓰게 고침.
+- 광원: 해·달 메시는 없고 평행광 방향(고도 30°)은 화면 밖이다. 반짝이는 것은 이펙트 `map_snow00` glare·`map_star00/01` [데이터].
+- **눈 자국(유체 높이장)** — 엔진 식·주소·검증은 [../engine/03_graphics.md](../engine/03_graphics.md) 7.6. hsmg402 값으로 정리:
+  - 자료 `hsmg402_fluid.fmdb` 재질 `fld_fluid`: 512², 월드 19×19, 중심 (0,0,0), 깊이 0.3, 시뮬레이션 0, clear_enable 0, texture_clear 1(`fld_clear`, BC1_SRGB → 선형 0~0.863, 원판 r ≈ 8.5 안에 눈, 가장자리 쪽 흰 둔덕), add 0.00015 [데이터].
+  - 좌표: **u = (x + 9.5)/19, v = (z + 9.5)/19**, 텍셀 = 19/512 = 0.0371 m [판독: main 0x7100421374].
+  - 매 프레임(일시정지 제외): ① 붓들을 더하기(ONE·ONE)로 → ② h += 0.00015 → ③ h = min(h, fld_clear) → ④ 노멀(3×3 Sobel). 첫 프레임만 h = fld_clear [판독: FUN_71003ee4d0·FUN_71003ee0a0, 블렌드 표 0xd Min·0xf Add]. 즉 **파인 홈은 프레임당 0.00015(초당 0.009)씩만 메워지고 처음 눈 높이(fld_clear) 위로는 안 올라간다** — 홈 −1 → 0.2 복원 ≈ 133 초 > 한 판 60 초 [재구현 계산].
+  - 눈덩이 붓(`snowball_fluid` 구, 반지름 1.12 × 0.6 × 공 배율): **h += −fluid0_hgt(x − 공x + 0.5, 0.5 − (z − 공z))·sat(10·프레임 이동 거리)·M160** [판독: 붓 FS p6]. 텍스처 범위가 공 중심 ±0.5 m 라 홈 폭은 공 배율 0.4~0.74 에서 메시 실루엣(0.27~0.5 m 반경), 그 위로는 텍스처 가장자리(≈ 0)까지 [판독 + 재구현 계산]. 멈춘 공은 쓰지 않는다(sat(10·0) = 0).
+  - 캐릭터 붓(`L/R_footfluid_m` 발 판, `bodyfluid_m` 몸 원판): **h += hgt·w·(w ≥ 1.01 ? 1 : sat(10·이동 거리)·utilityParameter0.x)·utilityParameter1.x(0.5)·M160**, w = 뼈 `NDinput_0` 위치(몸 x, 왼발 y, 오른발 z — 모션 애니가 걷기에서 디딘 발만 1), hgt = BC4_SNORM(발 중심 −0.79, 몸 중심 −0.32·가장자리 +0.28) → 걸으면 발자국 길, 피격·승리(w 3)는 멈춰도 몸 자국 [판독 + 데이터].
+  - **`FluidMaterialParamChange(v)` = `SetMaterialUtilityScaleFoot(v)` = 발 붓 재질 utilityParameter0 = v** [판독: main 0x71000ea3c0]. 시작 (0,1,1,1) → 떨어지는 동안 발 자국 없음, 단계 0 에서 착지(y ≤ 0)한 플레이어부터 (1,1,1,1). 몸 붓(Body)은 바꾸지 않는다.
+  - **`SetSystemScaleVec(v)`** = Actor+0x330(y 는 +0x324 에도) — `damageActor`/`damageScale` 이 기본 배율(+0x310)에 곱해 모델 배율로 쓴다 [판독: main 0x71000e577c·0x71000e9adc]. 물리 판정에는 쓰지 않는다. 시작 (2,1,2)은 발 붓이 꺼진(utilityParameter0 0) 동안이라 눈 자국에 영향 없음 [판독 + 추정].
+  - 지면 `fld_snow_fluid_mt` 윗면(y 0.196, 정점 간격 0.127 m): **정점 y += h·0.3**, N = normalize(N_면 + n_유체), 색 × fld_sg_alb(−h, 0). 아래 `fld_snow_mt` 면(y 0)이 h < −0.653 에서 홈 바닥이 된다 [판독 + 데이터]. 홈 벽의 청회색 그늘은 램프 확산(N·L)·IBL 이 노멀 변화로 만든다(색 곱 fld_sg_alb 는 거의 한 색).
+  - [미확정] 높이 RT 형식(웹은 float + [−1,1]), M160 기본값(웹 1), fld_clear 행 방향(웹: png 위 = z −9.5).
+  - [참고 이미지: 사용자 제공 원본 캡처] 공이 지나간 자리 = 공 지름 폭 깊은 홈(바닥·벽 청회색, 양 가장자리 밝음), 걸은 자리 = 좁은 홈, 한 판 내내 남음, 직선 경로·끝은 둥글게. 위 판독(붓 형태·Min 복원·133 초)과 맞는다.
 
 ### 7.6 이펙트 트리거 ↔ 코드 [데이터+판독]
 
@@ -1064,9 +1076,10 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 | 공 scale(SIZE_SCALE, 연속 성장) | 충돌 구 반지름(레벨업 때 다시 생성), 손 앞 거리·높이 r, 지면 Cast 반지름, 소리 T | 겉보기 크기 |
 | 공 굴림 회전(`HsModel::Rotate`) | 없음 | 회전만 |
 | 공 위치 y = r(손) | 지면 Cast 시작점 | |
-| 플레이어 SystemScale (2,1,2)→(1,1,1) | [미확정] | [추정] |
+| 플레이어 SystemScale (2,1,2)→(1,1,1) | 없음 [판독: damageActor·damageScale 의 모델 배율에만 곱함] | 모델 배율(웹 무시) |
+| FluidMaterialParamChange (0,…)→(1,…) | 없음 | 발 붓 utilityParameter0(눈 자국 켬) [판독] |
 | 반사 뒤집기(y ≤ −33) | 없음 | 물 반사 |
-| 눈 자국 높이장 | 없음 | 눈밭 변위 |
+| 눈 자국 높이장 | 없음 | 지면 정점 변위·노멀·색(7.5), 웹 view/fluid.ts |
 
 ### 7.11 재질 [판독 + 추정]
 
@@ -1080,12 +1093,12 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 | 하늘 `sky_mt`·`sky_grad_mt`(simple) | out = `_a0` × blendColor, 조명·안개 없음 [판독] | 같게 |
 | 구름 `cloud_mt`(그래프 2978185753) | rgb = aurora_grad02(TEXCOORD_3·srt3)·emissionScale, a = cloud_alb(0·srt0).a·blendColor.a·cloud_mask(1·srt1).a·cloud_mask(2·srt2).a, 조명 없음 [판독 FS 전체] | 같게(state 2 알파 섞기 [추정]) |
 | 배경·빙산 `bg_mt`·`tree_mt`·`ice_mt`(map) | 평행광 없음(`directional_light_off` 1). 확산 = alb·(1−metallic)·base_lmp(TEXCOORD_1).rgb·lightMapScale(1~1.5)·lightmap_color_scale(1) + IBL(확산 × irradianceColorScale = 0~0.25, 반사 × 1) + 빙산 `_e0`(=alb)·emissionScale(0.02~0.1) [판독] | lightMap(HDR)·평행광 끔·IBL 배율·emissive. 디테일 맵·lm.a 가림 생략 |
-| 지면 `fld_snow(_fluid)_mt`(그래프 746197195) | PBR(fld_alb × 0.76) + 평행광 확산을 fld_dif 1D 램프(N·L·0.5+0.5)로 + 림(0.75 회색 × 광색 × (1−N·V)^2) + **출력 × fld_sg_alb(정점색 a, 0)**(정점색 없음 → (1,0) ≈ sRGB 214·219·225 [추정]). 거칠기 = min(3면 투영 노이즈, roughness), 유체 높이장으로 노멀 변형 [판독] | 램프·림·최종 곱. 노이즈 거칠기·높이장 노멀 생략 |
+| 지면 `fld_snow(_fluid)_mt`(그래프 746197195) | 직접광 = mix(알베도·램프(0,0), 알베도·램프(N·L·0.5+0.5)·광색, 그림자), 확산 IBL = 알베도·(1−F)·(irr(N) + 램프(0.6)·irr(카메라 시선)), 림(rimLightColor × 광색 × (1−N·V)^rimPower × 배율), **출력 × fld_sg_alb(u, 0)** — u = 윗면(p384) −높이장, 가장자리(p768) 정점색 a. 텍스처가 거의 한 색이라 u 와 무관. 거칠기 = min(3면 투영 노이즈, roughness), 윗면(p384, 정점 그래프 2881520328)은 정점 y += h·0.3, N = normalize(N + n_유체)(7.5) [판독] | 직접광·그늘 램프·IBL 두 항(irr 큐브)·림·최종 곱, 윗면 높이장 변위·노멀·u = −h(MPS_FLUID). 노이즈 거칠기 생략 |
 | 절벽 `fld_cliff_mt`(그래프 2263802738) | cliff_lmp·cliff_gi·cliff_ao(TEXCOORD_2) + 시차 보정 큐브 pal_rad + 평행광 [판독 일부] | cliff_lmp 를 라이트맵으로 [근사] |
-| 오로라 `aurora*_mt`(그래프 474410661) | dodge(grad00, sat(alb·정점색·blendColor·utilityColor0)) … 알파 = alb.a·정점색.a·blendColor.a(애니)·mask.r [판독 일부] | dodge·알파만, 더하기(state 3 [추정]) |
-| 눈덩이 `fld_snow_mt`(그래프 4268919678) | 지면과 같은 구조(램프·림·최종 × snowball_alb(1,0)), 국소 IBL snowball_rad/irr·irradianceColorScale 2.5 [판독] | 국소 IBL 대신 장면 IBL × 2.5 [근사] |
+| 오로라 `aurora*_mt`(그래프 474410661) | D = dodge(grad00, sat(alb·정점색·blendColor·utilityColor0)), rgb = D·(irr(N) + 광색·sat(N·L)) + overlay(D, grad01·utilityColor1), 알파 = alb.a·정점색.a·blendColor.a(애니)·mask.r·(1 + grad01.r). 정점 = 월드 + noise·utilityParameter0 [판독 FS 전체·VS] | 반사 항·정점 변위 뺌, 더하기(state 3 [추정]) |
+| 눈덩이 `fld_snow_mt`(그래프 4268919678) | 지면과 같은 구조(그늘 램프·IBL 두 항·림·최종 × snowball_alb), 국소 IBL snowball_rad/irr·irradianceColorScale 2.5 [판독] | 확산은 snowball_irr 큐브 그대로, 반사만 장면 rad [근사] |
 | 부서짐 `snowball_break`(같은 그래프) | state 2, blendColor.a 애니(30→50f 1→0) | 같게 |
-| 유체 붓 `fld_snow_fluid_mt`(snowball), 캐릭터 `*fluid_m` | forward_plus_fluid — 높이장에 쓰는 붓 | 그리지 않음 |
+| 유체 붓 `fld_snow_fluid_mt`(snowball), 캐릭터 `*fluid_m` | forward_plus_fluid — 높이장에 ONE·ONE 로 더하는 붓, 식 7.5 [판독] | 장면에서 숨기고 view/fluid.ts 붓 장면에서 원본 식으로 |
 | 캐릭터 몸 | PBR + 곡률(cvt)·산란 LUT·3D 텍스처(피부·옷) [판독 일부] | 일반 PBR [근사] |
 | 캐릭터 눈 | 눈 = mix(utilityColor0(흰자), mix(홍채₁(TEXCOORD_2·srt2), 홍채₂(TEXCOORD_1·srt1), 홍채₂.a), sat(a₁+a₂)), 결과 = mix(눈, 눈꺼풀(TEXCOORD_0·srt0), 눈꺼풀.a) [판독: pc01] | 흰자 = utilityColor0 로 고침, 나머지 character.ts 기존 |
 
@@ -1251,7 +1264,7 @@ step(pads: PadInput[]) {
 | sdk 벡터 sin/cos 다항식 | 6.14 다항식 그대로(계수는 `hsmg402_player_calc.py`) | `Math.sin`으로 바꾸지 않는다(넉백 초속 비트 차이) |
 | `acosf`·`atan2f`(libm) | `Math.acos` 후 `F()` | 1 ulp 차이 가능(player calc와 같은 근사). 골든 필요 시 원본 libm 판독 필요 |
 | 셰이더(custom/fluid/water/map) | `view/material.ts` 규칙(원본 셰이더 판독, engine/03_graphics.md·7.11). 물·유체·디테일·피부 산란 등은 근사 | 시각 전용 |
-| 눈 자국 유체 | 512² 캔버스 높이장 + 방사형 붓 | 시각 전용, 쓰기 식 [미확정] |
+| 눈 자국 유체 | GPU 높이장(float 512² 두 장 번갈아) + 붓 RT(half, 더하기) + 노멀 RT, 지면 재질 MPS_FLUID(view/fluid.ts·material.ts) | 시각 전용. 렌더 1회에 로직 n 프레임 묶음, 높이 [−1,1] 자르기 [추정] |
 | VFXB v40 파티클 | 원본 이미터 수치로 CPU 런타임(`view/vfx.ts`). GPU 셰이더 쪽(운동식·빌보드 크기·색 합성)만 근사 — engine/08_effects.md 9.4 | 시각 전용 |
 | 시퀀스 SE(L15) | 렌더 wav + 볼륨 `base + trunc(T·m/127)`, 피치 bend `127−T`(범위 5~7반음) | 시퀀스 산술 정수 [추정] |
 | BGM 리전 점프 | 렌더 wav 리전(INTRO 0~3.556 s, MAIN 3.556~36.067 s 반복) | |
@@ -1312,6 +1325,8 @@ step(pads: PadInput[]) {
 | 플레이어·CPU 계산 | `cd F:/dev/mps && PYTHONIOENCODING=utf-8 .venv/Scripts/python web/tools/analysis/hsmg402_player_calc.py` | 재구현 계산 | `analysis/hsmg402_player_calc.json`. 다시 돌려 **바이트 동일** 확인 |
 | 에셋 변환·로드 | 9.8 명령 | 실행(도구) | glb 20 로드 오류 0, 텍스처 53 디코드 실패 0, apx↔col 624/624 |
 | 판독 대조(이 문서) | decomp grep: TickOrder 대상, SnowHandPos 뼈 사용, IsDeleteWait 본문·PLT 이름, L15 호출 6곳, FX 문자열 위치 | 판독 | 3.5·6.9·6.12·6.13.2·7.6 조정 |
+| 눈 자국 자료 | `cd F:/dev/mps && .venv/Scripts/python web/tools/analysis/hsmg402_fluid_assets.py` | 실행(도구) | `web/assets/hsmg402/fluid/`(fluid.json + 캐릭터 10명 붓 BC4_SNORM 직접 디코드 png 20) |
+| 눈 자국 식 대조(7.5) | `cd F:/dev/mps/web && npx tsx tools/check_hsmg402_fluid.ts` | 원본 기계어 에뮬 vs 웹 식 | 눈덩이 붓·캐릭터 붓 3종·지면 VS·fluid_normal 최대 오차 ≤ 3.2e-7, 블렌드 Add/Min/Max·Env 칸·붓 부호 — 오류 0 (화면·원본 실행 대조 아님) |
 
 **원본 게임 실행 대조는 없다.** 함수 단위 재구현 계산을 게임 전체 동작 검증으로 보지 않는다.
 
@@ -1389,9 +1404,9 @@ step(pads: PadInput[]) {
 | 16 | `MiniGameFinishPlayerUpCamera` 보간 식 | 결과 카메라 | main 클래스 판독 |
 | 17 | `SNOWBALL_FALL00`을 Crash/Disable에서 부를 때 재생인지 정지인지 | 이펙트 | `PlayFxTrigger` 인자 판독 |
 | 18 | SeMgr `CheckToEntry*` 중복 제거 규칙, 공끼리 HIT 소리의 L15 인자 | 소리 중복·크기 | SeMgr 디스어셈블 정독 |
-| 19 | `SetSystemScaleVec`·`FluidMaterialParamChange`의 뜻(표현만인가) | 시작 연출 | main Actor·HsModel 판독 |
+| 19 | ~~`SetSystemScaleVec`·`FluidMaterialParamChange`의 뜻~~ **닫힘(7.5)**: 앞은 damageActor 모델 배율, 뒤는 발 유체 붓 utilityParameter0. 남은 것: 유체 높이 RT 형식·M160 기본값·fld_clear 행 방향 | 눈 자국 깊이·방향 | NdRender RT 설정표(인덱스 0x15)·모델 렌더 자료 생성자 판독 또는 원본 실행 화면 |
 | 20 | 기반 흐름(main) 쪽 난수 소비, 단계 10~17 세부 분기, `ActorManager+0x90` 하위 4비트, 레이어 6·9 | 난수 상태 이어짐, 재도전 | main 흐름 처리기·ActorManager 판독 |
-| 21 | 재질: state_type·face_cull_type 뜻, texsrt 행렬 식(v 부호·회전), 정점색 미바인드 값, 오로라·절벽·캐릭터 몸 그래프 나머지 식(옵션 체계·UV·기본색·라이트맵·램프·림은 engine/03 으로 닫힘), 유체 쓰기 식, VFXB v40 GPU 셰이더 식(이미터 수치는 확정, engine/08_effects.md 11), ftrg 0x9101 필드·`YKD_VOL` 곡선, 조명 쪽 남은 것(확산식 1/π, 그림자 bias 단위, 블룸 해상도·간격, 출력 sRGB 여부 — lightRotation 축·톤맵 5·`lut_blend`·fog 3값·aspect 는 engine/07 로 닫힘), 사운드 프리셋 `]` 레코드·`snsp`·BGM 점프 Prm1 `1`, `SNOW_MAKE00` fx/se 동시 발동·`PC01` 라벨 치환 | 화면·소리 근사(로직 무관) | assets 노트 16절의 각 근거(셰이더·bex gfx·sound·ComFxTrigger 판독) |
+| 21 | 재질: state_type·face_cull_type 뜻, texsrt 행렬 식(v 부호·회전), 정점색 미바인드 값(눈 최종 곱에는 영향 없음), 절벽·캐릭터 몸 그래프 나머지 식(옵션 체계·UV·기본색·라이트맵·램프·림·눈 그늘/IBL·오로라 FS 는 engine/03 으로 닫힘), 오로라 정점 변위(noise_alb 미수록)·반사 항, VFXB v40 GPU 셰이더 식(이미터 수치는 확정, engine/08_effects.md 11), ftrg 0x9101 필드·`YKD_VOL` 곡선, 조명 쪽 남은 것(그림자 bias 단위, 블룸 해상도·간격, 출력 sRGB 여부 판독 — 참고 이미지와는 sRGB 가정이 맞음. lightRotation 축·톤맵 5·`lut_blend`·fog 3값·aspect·확산 1/π 없음은 engine/07 로 닫힘), 절벽·바다 밝기 차(웹이 참고 이미지보다 어둡다: 절벽 (26,53,79) vs (42,72,104), 바다 (27,64,116) vs (36,91,128) — 절벽 gi·ao 섞기·물 셰이더 미판독), 사운드 프리셋 `]` 레코드·`snsp`·BGM 점프 Prm1 `1`, `SNOW_MAKE00` fx/se 동시 발동·`PC01` 라벨 치환 | 화면·소리 근사(로직 무관) | assets 노트 16절의 각 근거(셰이더·bex gfx·sound·ComFxTrigger 판독) |
 | 22 | 나머지 apx 121개(휴리스틱 실패) | 다른 미니게임 충돌(이 게임은 해석 완료) | PhysX 3.4 직렬화 소스 |
 
 ### 11.2 이번 통합의 조정·정정 모음

@@ -1,6 +1,6 @@
 # 07. 카메라 aspect·조명·환경·후처리 — 평행광 규약, 그림자, IBL, 안개, 톤맵, LUT, 블룸, 비네트, FXAA (mps 판)
 
-2026-10-05. 담당: light. 상태: **판독 완료(hsmg402 값 기준) / 웹 반영 완료 / 화면 대조 없음**(헤드리스 확인은 메인이 마지막에 1회).
+2026-10-05. 담당: light. 2026-10-06 color 담당 12절 추가(화면 색 대조). 상태: **판독 완료(hsmg402 값 기준) / 웹 반영 완료 / 화면 대조 없음**(헤드리스 확인은 메인이 마지막에 1회).
 문서 형식은 [../분석.txt](../분석.txt). 확정 수준: **[실행]** 원본 실행(이 문서엔 없음), **[판독]** main 명령·디컴파일 또는 셰이더 SASS 판독, **[데이터]** 파일 값, **[재구현 계산]** 판독 식을 다시 계산, **[추정]**, **[미확정]**.
 
 주소는 main NSO, 베이스 0x7100000000. 셰이더 근거는 `system_boot_bnsh.nx.bea/…/ndrender/*.bnsh`·`system_boot.nx.bea/…/ndrender/*.bfsha` 의 Maxwell(SM53) 코드를 nvdisasm 으로 디스어셈블한 것이다(`web/tools/analysis/bnsh_sass.py`, 결과 `analysis/decomp/light/sass_*.txt`).
@@ -16,7 +16,7 @@
 | lightRotation → 방향 | (x°, y°) 를 rad 로, 행 R = [(cy, 0, −sy), (sx·sy, cx, sx·cy), (cx·sy, −sx, cx·cy)]. 빛 객체 Z 축 = **−(R 행 2)** = L(면→광원) = **(−cx·sy, sx, −cx·cy)**. (30, −25) → **(0.3660, 0.5, −0.7849)**, 빛 진행 = −L | 판독 |
 | 방향 검산 | lightPosition 방향 (0.311, 0.379, −0.872) 과 9.1°, IBL rad 큐브 가장 밝은 점(해)과 **7.9°**(z 반전 규약을 적용했을 때. 안 하면 111°) | 재구현 계산 + 데이터 |
 | lightRotation 적용 조건 | 재질 `lightPositionEnable` ≠ 0 이고 SystemRender 플래그(위치 기본 1, 방향 기본 1)가 켜져 있을 때. 위치 = lightPosition | 판독 |
-| 평행광 색 | `color`(0.570, 1.220, 1.5) 그대로 빛 색으로 넘김(세기 곱 없음). 모델 셰이더 전체에 1/π 상수가 없다 → 확산 = albedo·color·N·L 로 [추정] | 판독(전달) + 데이터(상수 부재) / 셰이딩 식은 추정 |
+| 평행광 색 | `color`(0.570, 1.220, 1.5) 그대로 `NdLightObject::GetColor` → Env UBO +0x10 (세기 곱 없음, `0x710041f1ec`). 셰이더 확산 = albedo·color·N·L, **1/π 없음**(오로라 p128·눈 p384 FS 에서 확인. 눈 그래프는 N·L 대신 램프) | 판독 |
 | 그림자 | 고정 정사영 l −17 r 15 t 12 b −8 n 1 f 30(`shadowAutoCameraEnable` 0, `shadowParamEnable` 1), 빛 행렬 기준(위치 lightPosition, Z = L, X = 세계 X 를 L 에 수직으로, Y = L×X). 캐스케이드 1. bias 0.5 / normalBias 1 의 단위·필터 [미확정] | 판독(축) + 데이터(값) |
 | IBL | env_mt 샘플러: common_radiance=rad, common_irradiance=irr, char_radiance=chara_rad, char_irradiance=chara_irr, fog_cubemap=irr. 배율 4개 1, ibl_rotate_y 0. **큐브 조회 방향 = (x, y, −z)**(Y 축 회전 뒤). 반사 LOD = 거칠기계수 × 6.5 | 판독(셰이더) + 데이터 |
 | 안개 (60, 1000, 0.95) | 시작·끝·**배율**. d = \|월드 − 카메라\|, T = sat( sat((끝 − d)/(끝 − 시작)·배율) + (1 − fog_color.a) ). 색 = mix(안개색, 표면, T). fog_cubemap 1 → 안개색 = irr 큐브(방향 (x,y,−z), LOD 7 − 7T), 아니면 fog_color.rgb. 안개 양 1−T: d = 10.53 에서 0, 29.9(무대) 0.020, 60 에서 0.05, 1000 에서 1 | 판독 + 재구현 계산 |
@@ -27,6 +27,8 @@
 | 비네트 0.2 | out·(1 − 0.2·\|(ndc.x·vignette_aspect, ndc.y)\|), 선형 값에, 자르지 않음. 모서리 0.717, 가장자리 중앙 0.8 | 판독 |
 | FXAA | fxaa_filter_type 1: 상대 문턱 = 0.125·0.7152, 절대 문턱 0.0833, 녹색 채널을 x/(x+0.155)·1.019 로 눌러 대비 판정, 탐색 1.5·3·12 텍셀 | 판독 |
 | 처리 순서 | posteffect_filter_order 1 + 블룸 켬: 블룸 → **합성 패스(장면+블룸 → 노출 → 톤맵 → LUT → 비네트)** → 마지막 패스 FXAA | 판독 |
+| View UBO +0x1a0/+0x1b0/+0x1c0 | 카메라 위치 / `Camera::GetViewVector`(= −카메라 행렬 +0xc0 = 눈→주시점) / 위쪽 — `0x7100432d9c~0x7100432f9c`. 눈 그래프 IBL 이 +0x1b0 방향으로 irr 를 한 번 더 읽는다(12절) | 판독 |
+| 화면 색 대조 | 무대 눈 한 점을 원본 식으로 계산하면 sRGB (144, 219, 242) — 공식 스크린샷 무대 중앙 (144, 220, 242). 원본 무대는 **수치로도 하늘색(R 이 낮다)** 이고 "흰색"이 아니다. 웹이 어두웠던 원인은 눈 그래프 식 차이(12절) | 재구현 계산 + 참고 이미지 |
 | 카메라 aspect | 애니 user data `bezel_apply_aspect` = 1 일 때만 파일 aspect 사용. hsmg402(전체 fsnb 451개 모두) 키 없음 → **화면 비(16:9)** | 판독 + 데이터 |
 
 ## 2. 자료
@@ -218,13 +220,13 @@ persp ? SetProjectionPerspectiveFovy(fovy, aspect, near, far) : 정사영(fovy·
 
 | 항목 | 원본 | 웹 | 이유 |
 |---|---|---|---|
-| 직접광 세기 | color 그대로, 확산에 1/π 없음 [추정] | intensity = π·max(color) | three Lambert 의 1/π 상쇄 |
-| IBL 확산 | irr 큐브 | rad PMREM 의 거친 단 | three 표준 경로 |
+| 직접광 세기 | color 그대로, 확산에 1/π 없음 [판독] | intensity = π·max(color) | three Lambert 의 1/π 상쇄 |
+| IBL 확산 | irr 큐브 | 눈·오로라 그래프는 irr 큐브를 직접(`mpsSceneEnv`), 나머지 재질은 rad PMREM 의 거친 단 | 일반 재질은 three 표준 경로 [근사] |
 | 안개 색 | irr 큐브 방향별(LOD 7−7T) | irr 전체 평균 한 색 | 재질마다 큐브 유니폼을 넣지 않으려고 |
 | 그림자 | 고정 정사영 1장, bias 단위 미상 | three PCFSoft 2048², bias −0.0005, normalBias 0.02 | 단위 미판독 |
 | 블룸 | 밉 체인, first 해상도·up 간격 미판독, first 상한 tex2+0.5 | 절반 해상도부터 5단, 간격 = 아랫단 1텍셀, 상한 없음 | 미판독 |
 | FXAA | FXAA 3.11 계열(1.5/3/12) | three FXAAShader + 원본 문턱 | 근사 |
-| 출력 | sRGB 타깃 [추정] | 합성 패스가 sRGB 로 부호화해 LDR 에 씀 | |
+| 출력 | sRGB 타깃 [추정 + 참고 이미지 정합: 12절 계산이 공식 스크린샷과 ±1] | 합성 패스가 sRGB 로 부호화해 LDR 에 씀 | |
 
 ## 10. 검증
 
@@ -240,11 +242,51 @@ persp ? SetProjectionPerspectiveFovy(fovy, aspect, near, far) : 정사영(fovy·
 
 | 항목 | 영향 | 필요한 근거 |
 |---|---|---|
-| forward_plus 확산식(1/π 를 CPU 에서 접는지, 셰이딩 모델 전체) | 직접광 밝기 ×π | forward_plus_custom 우버 변형의 광원 루프 SASS 판독 |
 | 그림자 bias 0.5 / normalBias 1 의 단위, 필터(PCF·EVSM) | 그림자 경계 | shadowmap 셰이더·ShadowmapParamBuffer 판독 |
 | 블룸 first 출력 해상도, down/up 텍셀 간격 a[0x88..0x8c], first 의 둘째 텍스처(c[0x3][0x78]) | 블룸 퍼짐·상한 | `FUN_710040657c` 렌더 타깃·정점 셰이더 판독 |
-| 마지막 렌더 타깃 sRGB 여부 | 전체 감마 | NdRender 프레임버퍼 형식 판독 |
+| 마지막 렌더 타깃 sRGB 여부 | 전체 감마(참고 이미지와는 sRGB 가정이 맞는다, 12절) | NdRender 프레임버퍼 형식 판독 |
 | 기준축 (0,1,0) 가지(\|L.y\| < 0.01) 기저 | 다른 미니게임 그림자 방향 | `FUN_71003aab24` 앞 가지 정리 |
 | ibl_rotate_y 회전 부호, 전역각 `FUN_71003c9fc0` | 다른 판 | 해당 함수 판독 |
 | 톤맵 1·2·4 의 정확한 식 | 다른 판 | 각 블록 SASS 정리(상수만 확인) |
 | LUT 샘플러 래핑(재질은 Wrap, 엔진 덮어쓰기 여부) | g≈1 근처 색 | RenderSampler 설정 판독 |
+
+## 12. 화면 색 대조 — 무대가 "청록"으로 보이던 원인 (2026-10-06, 담당 color)
+
+### 12.1 결론
+
+- 원본 무대 눈은 **수치로도 하늘색**이다. 공식 스크린샷(아래 출처) 무대 영역 중앙값 sRGB (138, 211, 234), 중앙 한 점 (144, 220, 242) [참고 이미지]. 평행광 색 (0.57, 1.22, 1.5)·irr 큐브·fld_sg_alb 가 모두 파랑 쪽이라 원본 식 자체가 R 을 낮게 만든다 [판독 + 데이터]. 사람 눈에 "흰 눈"으로 보이는 것은 어두운 남색 배경과의 대비다.
+- 고치기 전 웹이 어둡고 진했던 원인은 **눈 그래프 식 두 곳**과 IBL 원천이다(값은 `analysis/hsmg402_color_calc.json`, 도구 `web/tools/analysis/hsmg402_color_calc.py`):
+  1. 그늘: 원본 직접광 = mix(알베도·램프(0,0), 알베도·램프(N·L·0.5+0.5)·광색, 그림자) — 그늘에도 알베도 × 0.171(램프 sRGB 115) 이 남는다. 웹(three)은 그림자에서 직접광이 0 [판독 p384 FS `0x1318~` 끝부분].
+  2. 확산 IBL: 원본 = 알베도·(1−F)·(irr(N) + 램프(0.6, 0)·irr(View+0x1b0 = 카메라 시선)). 시선 방향(앞·아래)의 irr 는 (0.24, 0.52, 1.03) 으로 밝아서 확산 IBL 이 두 배 넘게 된다. 웹은 irr(N) 하나, 그것도 rad PMREM 으로 근사 [판독 p384 FS `0xcd0~0xec0`, View +0x1b0 = `Camera::GetViewVector` `0x7100432dc4`].
+- 후처리(톤맵 5·LUT·sRGB 출력)·광색 단위는 원본 식대로 맞다 — 원본 식으로 계산한 값이 참고 이미지와 ±1 이내다.
+
+### 12.2 무대 위 한 점(N = +Y, 카메라 (0, 12.5, 27.18) → 원점, 비네트 0) [재구현 계산]
+
+| 단계 | 원본 식 (양지) | 고치기 전 웹 (양지) | 원본 식 (그늘) | 고치기 전 웹 (그늘) |
+|---|---|---|---|---|
+| 알베도 fld_alb(선형 평균) × blendColor 1 | 0.541 | 같음 | 0.541 | 같음 |
+| 직접광 | 알베도·램프 0.772·광색 = (0.238, 0.512, 0.628) | 같음 | 알베도·램프(0,0) 0.171 = (0.093, 0.093, 0.093) | 0 |
+| 확산 IBL | 알베도·0.96·(irr(N) (0.111, 0.249, 0.539) + 0.597·irr(시선) (0.239, 0.523, 1.027)) = (0.132, 0.295, 0.600) | 알베도·0.96·irr(N) = (0.058, 0.130, 0.280) | 같음(양지와 같다) | 같음 |
+| 림 (rimLightColor 1 · 광색 · (1−N·V)^3 · 0.8, N·V 0.418) | (0.090, 0.193, 0.237) | 같음 | 같음 | 같음 |
+| × fld_sg_alb (0.681, 0.714, 0.757) | **(0.314, 0.713, 1.108)** | (0.263, 0.596, 0.866) | **(0.215, 0.414, 0.703)** | (0.101, 0.230, 0.391) |
+| 톤맵 5 | (0.312, 0.681, 0.864) | (0.263, 0.590, 0.772) | | |
+| g = t^(1/2.2) → LUT(선형) | (0.278, 0.711, 0.884) | (0.223, 0.612, 0.800) | | |
+| 화면 sRGB | **(144, 219, 242)** | (130, 205, 231) | **(115, 170, 218)** | (66, 120, 165) |
+| 참고 이미지 | 중앙 (144, 220, 242), 무대 중앙값 (138, 211, 234) | 웹 화면 무대 중앙값 (122, 197, 223) | 발자국·그늘 (104~131, 159~186, 204~227) | |
+
+반사(스펙큘러)는 양쪽 같은 근사로 빼고 계산했다(거칠기 ≈ 0.85, F0 0.04 → 영향 작음).
+
+### 12.3 웹 반영
+
+- `view/material.ts` 눈 레시피: RAMP_DIRECT(그늘 램프(0,0) 몫, 그림자 비율 = |그림자 곱한 광색| / |광색|), IBL_SNOW(irr(N) + 램프(0.6)·irr(시선), 큐브는 three 조회 (−x, y, z)), 램프 샘플러 Clamp(원본 fmdb). 눈덩이는 재질 국소 irr 큐브(snowball_irr, `material.json` textures 의 `cube`).
+- `view/lighting.ts`: irr 큐브·평행광 원본 색·L 을 `mpsSceneEnv`(material.ts)로 넘긴다. 큐브 면 바꿈 로더는 `loadMpsHdrCube`(material.ts)로 옮겼다.
+- 검산: `hsmg402_color_calc.py` 의 webAfter(고친 웹 GLSL 을 그대로 옮긴 식)가 원본 식과 최대 오차 0.
+
+### 12.4 광원
+
+- 장면에 해·달 같은 빛나는 메시는 없다(sky glb = sky·sky_grad·cloud_layer 3개) [데이터]. 평행광 방향(고도 30°)은 게임 카메라 화면 위쪽 끝(수평 아래 13.4°)보다 높아 화면 밖이다 [재구현 계산]. 화면의 반짝임은 이펙트(`hsmg402_map_snow00` 의 `snow00_*_glare`, `map_star00/01` 별·유성 — 08_effects.md)다.
+
+### 12.5 참고 이미지 출처
+
+- https://mario.wiki.gallery/images/5/50/Snowball_Summit_-_Mario_Party_Superstars.png (1920×1080, [Super Mario Wiki Snowball Summit](https://www.mariowiki.com/Snowball_Summit))
+- https://mario.wiki.gallery/images/3/39/MPS_Snowball_Summit.png (공식 사이트 스크린샷, 1920×1080)

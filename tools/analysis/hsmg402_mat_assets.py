@@ -22,10 +22,15 @@ EXTRA = [
     'hsmg402_cloud_mask',    # 구름 그래프 utilitySampler0 (두 번)
     'hsmg402_aurora_grad02', # 구름 그래프 _e0
     'hsmg402_aurora_grad00', # 오로라 그래프 utilitySampler0
+    'hsmg402_aurora_grad01', # 오로라 그래프 _e0 (overlay 합성·알파 ×(1 + e.r))
     'hsmg402_aurora_mask',   # 오로라 그래프 utilitySampler2
     'hsmg402_fld_dif',       # 눈 그래프 utilitySampler2 (확산 램프)
     'hsmg402_fld_sg_alb',    # 눈 그래프 utilitySampler0 (최종 곱, 지면)
     'hsmg402_snowball_alb',  # 눈 그래프 utilitySampler0 (최종 곱, 눈덩이)
+]
+# 재질 국소 IBL 큐브(BC6H 6면 .hdr, 원본 면 순서 +X −X +Y −Y +Z −Z) — 눈덩이 irradianceIbl
+CUBES = [
+    'hsmg402_snowball_irr',
 ]
 
 
@@ -47,6 +52,13 @@ def main():
         ext = '.hdr' if hdr else '.png'
         shutil.copyfile(os.path.join(SRC, 'tex', name + ext), os.path.join(DST, 'tex', name + ext))
         textures[name] = {'file': f'material/tex/{name}{ext}', 'hdr': hdr, 'srgb': fmt.endswith('_SRGB'), 'format': fmt}
+    for name in CUBES:
+        meta = json.load(open(os.path.join(SRC, 'tex', name + '.json'), encoding='utf-8'))
+        files = []
+        for f in meta['hdrFiles']:
+            shutil.copyfile(os.path.join(SRC, 'tex', f), os.path.join(DST, 'tex', f))
+            files.append(f'material/tex/{f}')
+        textures[name] = {'file': files[0], 'hdr': True, 'srgb': False, 'format': meta['format'], 'cube': files}
     env = json.load(open(os.path.join(SRC, 'meta', 'hsmg402_env.dump.json'), encoding='utf-8'))
     params = env[0]['models'][0]['materials'][0]['params']
     out = {

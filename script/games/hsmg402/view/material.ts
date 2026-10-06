@@ -22,9 +22,13 @@
  *   - texsrt 행렬 = nn::g3d Maya 모드 식(texSrtMatrix). u 쪽(−tx 를 배율 안에서 뺌)은 눈꺼풀 셀 이동 데이터와 맞음 [데이터], v 쪽 부호·회전 부호 [추정]
  *   - renderInfo state_type 0 불투명 / 1 컷아웃(punchThroughThresholdColor) / 2 알파 섞기 / 3 더하기 [추정: 쓰는 재질 상관 — DK 털·속눈썹·구름·부서짐·오로라·하늘띠]
  *   - face_cull_type 0 뒷면 컬링 / 1 앞면 컬링 / 2 양면 [추정: 데이터 상관]
- *   - 디테일 맵(_r1/_n1·_r3/_n3)·클리어코트·구름 그림자·라이트그리드·국소 IBL(재질 큐브)·물·유체 높이장·VAT·정점 셰이더 그래프는 옮기지 않는다
+ *   - 디테일 맵(_r1/_n1·_r3/_n3)·클리어코트·구름 그림자·라이트그리드·국소 반사 IBL(재질 rad 큐브)·물·VAT·정점 셰이더 그래프는 옮기지 않는다
+ *     (예외: 유체 높이장 정점 그래프 2881520328 은 MPS_FLUID 로 옮긴다 — 높이장은 hsmg402 view/fluid.ts)
+ *     (눈 그래프의 국소 irr 큐브는 쓴다 — material.json textures 의 cube 항목)
+ *   - 샘플러 래핑은 glb 샘플러(원본 fmdb wrapU/V)를 그대로 둔다. glb 밖 텍스처는 Repeat, 눈 램프 fld_dif 만 원본대로 Clamp [데이터]
  */
 import * as THREE from 'three';
+import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 
 export interface FresSampler {
@@ -106,7 +110,7 @@ export interface SamplerRule {
 
 export interface MaterialData {
   env: { lightmap_color_scale: number };
-  textures: Record<string, { file: string; hdr: boolean; srgb: boolean }>;
+  textures: Record<string, { file: string; hdr: boolean; srgb: boolean; cube?: string[] }>;
   rules: Record<string, Record<string, SamplerRule>>;
 }
 
@@ -115,13 +119,17 @@ const RECIPES: Record<string, 'cloud' | 'snow' | 'aurora' | 'cliff'> = {
   /* hsmg402 구름 cloud_mt [판독 FS 전체]: 조명 없음. rgb = _e0(uv3·srt3).rgb·emissionScale,
      a = _a0(uv0·srt0).a · blendColor.a · util0(uv1·srt1).a · util0(uv2·srt2).a */
   '2978185753': 'cloud',
-  /* hsmg402 지면 fld_snow(_fluid)_mt, 눈덩이 fld_snow(_fluid)_mt [판독 일부]: PBR(_a0×blendColor, _n0) 에 더해
-     평행광 확산 = util2 램프(fld_dif, u = N·L·0.5+0.5), 림 = rimLightColor·광색·pow(1−N·V, rimPower)·rimlightColorScale,
-     마지막에 출력 rgb × util0(u = 정점색 a, v = 0) — 메시에 정점색이 없어 a = 1 로 읽는다 [추정: 미바인드 속성 = (0,0,0,1)] */
+  /* hsmg402 지면 fld_snow(_fluid)_mt, 눈덩이 fld_snow(_fluid)_mt [판독: p384·p768·p512 FS]: PBR(_a0×blendColor, _n0) 에 더해
+     평행광 확산 = mix(알베도·램프(0,0), 알베도·램프(N·L·0.5+0.5, 0)·광색, 그림자) — 그늘에도 램프(0,0)(sRGB 115) 몫이 남는다,
+     확산 IBL = 알베도·(1−F)·(irr(N) + 램프(0.6, 0)·irr(카메라 시선 View+0x1b0))·irradianceColorScale (눈덩이는 재질 국소 irr 큐브),
+     림 = rimLightColor·광색·pow(1−N·V, rimPower)·rimlightColorScale,
+     마지막에 출력 rgb × util0(u, v = 0) — u = 지면 p384 는 −높이장, p768·눈덩이는 정점색 a(미바인드). 텍스처가 거의 한 색(sRGB 206~222)이라 (1, 0) 으로 읽는다 */
   '746197195': 'snow',
   '4268919678': 'snow',
-  /* hsmg402 오로라 aurora*_mt [판독 일부]: 기본 = sat(_a0.rgb·정점색.rgb·blendColor.rgb·utilityColor0.rgb) 를 util0(grad00, uv1·srt1) 로
-     color dodge, a = _a0.a·정점색.a·blendColor.a·util2(mask, uv0·srt2).r. 뒤의 overlay·_e0·IBL 합성과 정점 그래프(노이즈 변위)는 옮기지 않았다 [근사] */
+  /* hsmg402 오로라 aurora*_mt [판독: p128 FS 전체]: 기본 = sat(_a0.rgb·정점색.rgb·blendColor.rgb·sat(utilityColor0.rgb)) 를 util0(grad00, uv1·srt1) 로
+     color dodge → D. E = sat(_e0(grad01, uv2·srt2))·sat(utilityColor1)·utilityParameter1.y.
+     rgb = D·(1−m)·((1−F0)·irr(N)·irradianceColorScale + 광색·sat(N·L)) + overlay(sat(D·utilityParameter1.x), E),
+     a = _a0.a·정점색.a·blendColor.a·util2(mask, uv2·srt2).r·(1 + _e0.r). 반사(스펙큘러) 항과 정점 그래프(노이즈 텍스처 변위)는 옮기지 않았다 [근사] */
   '474410661': 'aurora',
   /* hsmg402 절벽 fld_cliff_mt [판독 일부]: util0(cliff_lmp)·util2(cliff_gi)·util1(cliff_ao) 가 uv2(srt 없음). lmp 와 gi 를 섞는 계수는 미판독 → lmp 만 라이트맵으로 [근사] */
   '2263802738': 'cliff',
@@ -226,9 +234,78 @@ const RAMP_DIRECT = (() => {
   if (!src.includes(a)) throw new Error('three lights_physical_pars_fragment 형식이 바뀌었다(material.ts)');
   return src.replace(
     a,
-    'reflectedLight.directDiffuse += texture2D( mpsRamp, vec2( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5, 0.5 ) ).rgb * directLight.color * BRDF_Lambert( material.diffuseColor );',
+    `{
+  float mpsShadow = 1.0;
+  #if NUM_DIR_LIGHTS > 0
+    mpsShadow = clamp( dot( directLight.color, vec3( 1.0 ) ) / max( dot( directionalLights[ 0 ].color, vec3( 1.0 ) ), 1e-6 ), 0.0, 1.0 );
+  #endif
+  reflectedLight.directDiffuse += ( texture2D( mpsRamp, vec2( dot( geometryNormal, directLight.direction ) * 0.5 + 0.5, 0.0 ) ).rgb * directLight.color
+    + texture2D( mpsRamp, vec2( 0.0 ) ).rgb * PI * ( 1.0 - mpsShadow ) ) * BRDF_Lambert( material.diffuseColor );
+}`,
   );
 })();
+
+/** 눈 그래프 확산 IBL: irr(N) + 램프(0.6, 0)·irr(카메라 시선) — 큐브는 원본 조회 (x, y, −z) 에 맞춰 면을 바꿔 구운 것이라 three 규약 (−x, y, z) 로 읽는다 */
+const IBL_SNOW = (() => {
+  const a = 'iblIrradiance += mpsIrrScale * getIBLIrradiance( geometryNormal );';
+  if (!IBL_SCALED.includes(a)) throw new Error('IBL_SCALED 형식이 바뀌었다(material.ts)');
+  return IBL_SCALED.replace(
+    a,
+    `{
+  vec3 mpsN = inverseTransformDirection( geometryNormal, viewMatrix );
+  vec3 mpsF = -vec3( viewMatrix[ 0 ][ 2 ], viewMatrix[ 1 ][ 2 ], viewMatrix[ 2 ][ 2 ] );
+  iblIrradiance += mpsIrrScale * mpsEnvIrrScale * PI * ( textureCube( mpsIrr, vec3( -mpsN.x, mpsN.yz ) ).rgb
+    + texture2D( mpsRamp, vec2( 0.6, 0.0 ) ).rgb * textureCube( mpsIrr, vec3( -mpsF.x, mpsF.yz ) ).rgb );
+}`,
+  );
+})();
+
+/** 장면 환경 — 조명 쪽(lighting.ts)이 채운다. irr 큐브(면 바꿈 구움), 평행광 원본 색·L(면→광원, 세계), 공용 irr 배율 */
+export const mpsSceneEnv = {
+  irradiance: { value: null as THREE.CubeTexture | null },
+  lightColor: { value: new THREE.Vector3() },
+  lightDir: { value: new THREE.Vector3(0, 1, 0) },
+  irrScale: { value: 1 },
+};
+
+/** 유체 높이장(눈 자국) — 무대 유체(hsmg402 view/fluid.ts)가 채운다. 높이(r), 노멀(rgb), 월드 xz → UV (원점 x, 원점 z, 1/폭, 1/폭), 깊이 */
+export const mpsFluidEnv = {
+  height: { value: null as THREE.Texture | null },
+  normal: { value: null as THREE.Texture | null },
+  rect: { value: new THREE.Vector4(-9.5, -9.5, 1 / 19, 1 / 19) },
+  depth: { value: 0.3 },
+};
+
+const FLUID_VERTEX = `{
+  vec4 mpsFluidW = modelMatrix * vec4( transformed, 1.0 );
+  vMpsFluidUv = ( mpsFluidW.xz - mpsFluidRect.xy ) * mpsFluidRect.zw;
+  vMpsFluidH = textureLod( mpsFluidHeight, vMpsFluidUv, 0.0 ).r;
+  transformed += inverse( mat3( modelMatrix ) ) * vec3( 0.0, vMpsFluidH * mpsFluidDepth, 0.0 );
+}`;
+
+const FLUID_NORMAL = 'normal = normalize( normal + ( viewMatrix * vec4( normalize( texture2D( mpsFluidNormal, vMpsFluidUv ).xyz ), 0.0 ) ).xyz );';
+
+/** 큐브 면 데이터를 제자리에서 180° 돌린다(화소 순서 뒤집기) */
+function rotateFace180(tex: THREE.DataTexture): void {
+  const img = tex.image as { data: Uint16Array | Float32Array; width: number; height: number };
+  const n = img.width * img.height;
+  const src = img.data.slice();
+  for (let p = 0; p < n; p++) {
+    const q = n - 1 - p;
+    for (let c = 0; c < 4; c++) img.data[p * 4 + c] = src[q * 4 + c];
+  }
+}
+
+/** HDR 큐브 6면(원본 면 순서 +X −X +Y −Y +Z −Z) → three CubeTexture. 원본 조회 (x, y, −z) 를 three 조회 (−x, y, z) 로 맞춰 면을 [−X, +X, 180°(+Y), 180°(−Y), −Z, +Z] 로 굽는다 [판독: 07_camera_lighting.md 6.3] */
+export async function loadMpsHdrCube(urls: string[]): Promise<THREE.CubeTexture> {
+  const order = [urls[1], urls[0], urls[2], urls[3], urls[5], urls[4]];
+  const cube = await new HDRCubeTextureLoader().setDataType(THREE.HalfFloatType).loadAsync(order);
+  const imgs = cube.images as THREE.DataTexture[];
+  rotateFace180(imgs[2]);
+  rotateFace180(imgs[3]);
+  cube.needsUpdate = true;
+  return cube;
+}
 
 /** 재질 자료(material.json)와 glb 밖 텍스처. 화면이 하나 만들어 load 한다 */
 export class FresLibrary {
@@ -244,6 +321,10 @@ export class FresLibrary {
     await Promise.all(
       Object.entries(this.data.textures).map(async ([name, e]) => {
         try {
+          if (e.cube) {
+            this.tex.set(name, await loadMpsHdrCube(e.cube.map((f) => this.url(f))));
+            return;
+          }
           const t = e.hdr ? await hdr.loadAsync(this.url(e.file)) : await png.loadAsync(this.url(e.file));
           t.flipY = false;
           t.colorSpace = e.srgb ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
@@ -306,7 +387,6 @@ export class FresLibrary {
       const r = rules[sampler];
       const t = t0.clone();
       ctl.ownTextures.push(t);
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.channel = r ? r.uv : 0;
       t.matrixAutoUpdate = false;
       if (r && r.srt !== null) {
@@ -387,16 +467,34 @@ export class FresLibrary {
         defines.MPS_RIM = '';
       }
       if (recipe === 'snow') {
-        const ramp = this.texture(texName('utilitySampler2'));
-        if (ramp) {
+        const ramp0 = this.texture(texName('utilitySampler2'));
+        if (ramp0) {
+          const ramp = ramp0.clone();
+          ramp.wrapS = ramp.wrapT = THREE.ClampToEdgeWrapping;
+          ramp.needsUpdate = true;
+          ctl.ownTextures.push(ramp);
           uniforms.mpsRamp = { value: ramp };
           defines.MPS_RAMP = '';
+          const local = opt.use_local_ibl === '1' ? this.texture(texName('irradianceIbl')) : null;
+          if (local || mpsSceneEnv.irradiance.value) {
+            uniforms.mpsIrr = local ? { value: local } : mpsSceneEnv.irradiance;
+            uniforms.mpsEnvIrrScale = mpsSceneEnv.irrScale;
+            defines.MPS_IRR = '';
+          }
         }
         const tint = this.texture(texName('utilitySampler0'));
         if (tint) {
           uniforms.mpsTint = { value: tint };
           defines.MPS_TINT = '';
         }
+      }
+      /* 지면 fld_snow_fluid_mt 정점 그래프 2881520328 [판독: p384 VS·FS]: y += h·깊이, N = normalize(N + N_유체), 최종 곱 u = −h */
+      if (opt.main_vertex_shader_graph === '2881520328' && mpsFluidEnv.height.value && mpsFluidEnv.normal.value) {
+        uniforms.mpsFluidHeight = mpsFluidEnv.height;
+        uniforms.mpsFluidNormal = mpsFluidEnv.normal;
+        uniforms.mpsFluidRect = mpsFluidEnv.rect;
+        uniforms.mpsFluidDepth = mpsFluidEnv.depth;
+        defines.MPS_FLUID = '';
       }
     } else if (recipe === 'cloud') {
       const a = extra(texName('_a0'), rules._a0, { uv: 0, srt: 0 });
@@ -410,16 +508,40 @@ export class FresLibrary {
       const a = extra(texName('_a0'), rules._a0, { uv: 0, srt: 0 });
       const g = extra(texName('utilitySampler0'), rules.utilitySampler0, { uv: 1, srt: 1 });
       const k = extra(texName('utilitySampler2'), rules.utilitySampler2, { uv: 0, srt: 2 });
+      const e = extra(texName('_e0'), rules._e0, { uv: 2, srt: 2 });
       const uc = vec4(f, 'utilityColor0', [1, 1, 1, 1]);
+      const uc1 = vec4(f, 'utilityColor1', [1, 1, 1, 1]);
+      const up1 = vec4(f, 'utilityParameter1', [1, 1, 1, 1]);
       uniforms.mpsUtil0 = { value: new THREE.Vector3(uc[0], uc[1], uc[2]) };
+      uniforms.mpsUtil1 = { value: new THREE.Vector3(uc1[0], uc1[1], uc1[2]) };
+      uniforms.mpsUtilP1 = { value: new THREE.Vector2(up1[0], up1[1]) };
       defines.MPS_VCOLOR = '';
-      if (a >= 0 && g >= 0 && k >= 0)
+      if (mpsSceneEnv.irradiance.value) {
+        uniforms.mpsIrr = mpsSceneEnv.irradiance;
+        uniforms.mpsEnvIrrScale = mpsSceneEnv.irrScale;
+        uniforms.mpsIrrScale = { value: num(f, 'irradianceColorScale', 1) * (1 - num(f, 'metallic', 0)) };
+        uniforms.mpsLightColor = mpsSceneEnv.lightColor;
+        uniforms.mpsLightDir = mpsSceneEnv.lightDir;
+        defines.MPS_AURORA_LIT = '';
+      }
+      if (a >= 0 && g >= 0 && k >= 0 && e >= 0)
         frag = `{
   vec4 a0 = mpsTex${a}();
   vec3 base = clamp( a0.rgb * vMpsColor.rgb * mpsBlend.rgb * clamp( mpsUtil0, 0.0, 1.0 ), 0.0, 1.0 );
   vec3 grad = clamp( mpsTex${g}().rgb, 0.0, 1.0 );
   vec3 dodge = mix( min( grad / max( 1.0 - base, 1e-4 ), vec3( 1.0 ) ), vec3( 1.0 ), step( vec3( 1.0 ), base ) );
-  diffuseColor = vec4( dodge, a0.a * vMpsColor.a * mpsBlend.a * mpsTex${k}().r );
+  vec3 e0 = mpsTex${e}().rgb;
+  vec3 oa = clamp( dodge * mpsUtilP1.x, 0.0, 1.0 );
+  vec3 ob = clamp( clamp( e0, 0.0, 1.0 ) * clamp( mpsUtil1, 0.0, 1.0 ) * mpsUtilP1.y, 0.0, 1.0 );
+  vec3 ovl = mix( 1.0 - 2.0 * ( 1.0 - oa ) * ( 1.0 - ob ), 2.0 * oa * ob, vec3( lessThan( oa, vec3( 0.5 ) ) ) );
+  vec3 lit = vec3( 0.0 );
+  #ifdef MPS_AURORA_LIT
+    vec3 mpsN = normalize( vMpsN );
+    lit = dodge * ( 0.96 * mpsIrrScale * mpsEnvIrrScale * textureCube( mpsIrr, vec3( -mpsN.x, mpsN.yz ) ).rgb
+      + mpsLightColor * clamp( dot( mpsN, mpsLightDir ), 0.0, 1.0 ) );
+  #endif
+  float ak = a0.a * vMpsColor.a * mpsBlend.a * mpsTex${k}().r;
+  diffuseColor = vec4( lit + ovl, ak + ak * e0.r );
 }`;
     }
 
@@ -479,15 +601,28 @@ function patch(
     if ('MPS_IBL_SCALE' in defines) fdecl += 'uniform float mpsIrrScale;\nuniform float mpsRadScale;\n';
     if ('MPS_RIM' in defines) fdecl += 'uniform vec3 mpsRimColor;\nuniform float mpsRimPower;\nuniform float mpsRimScale;\n';
     if ('MPS_RAMP' in defines) fdecl += 'uniform sampler2D mpsRamp;\n';
+    if ('MPS_IRR' in defines || 'MPS_AURORA_LIT' in defines) fdecl += 'uniform samplerCube mpsIrr;\nuniform float mpsEnvIrrScale;\n';
+    if ('MPS_AURORA_LIT' in defines) {
+      vdecl += 'varying vec3 vMpsN;\n';
+      vbody += 'vMpsN = normalize( mat3( modelMatrix ) * normal );\n';
+      fdecl += 'varying vec3 vMpsN;\nuniform float mpsIrrScale;\nuniform vec3 mpsLightColor;\nuniform vec3 mpsLightDir;\n';
+    }
+    if ('mpsUtil1' in uniforms) fdecl += 'uniform vec3 mpsUtil1;\nuniform vec2 mpsUtilP1;\n';
     if ('MPS_TINT' in defines) fdecl += 'uniform sampler2D mpsTint;\n';
     if ('mpsEmission' in uniforms) fdecl += 'uniform float mpsEmission;\n';
     if ('mpsUtil0' in uniforms) fdecl += 'uniform vec3 mpsUtil0;\n';
+    if ('MPS_FLUID' in defines) {
+      vdecl += 'uniform sampler2D mpsFluidHeight;\nuniform vec4 mpsFluidRect;\nuniform float mpsFluidDepth;\nvarying vec2 vMpsFluidUv;\nvarying float vMpsFluidH;\n';
+      fdecl += 'uniform sampler2D mpsFluidNormal;\nvarying vec2 vMpsFluidUv;\nvarying float vMpsFluidH;\n';
+    }
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\n${vdecl}`).replace('#include <uv_vertex>', `#include <uv_vertex>\n${vbody}`);
+    if ('MPS_FLUID' in defines) sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>\n${FLUID_VERTEX}`);
     let fs = sh.fragmentShader.replace('#include <common>', `#include <common>\n${fdecl}`);
     if (frag) fs = fs.replace('#include <map_fragment>', frag);
     if ('MPS_NO_DIRECT' in defines) fs = fs.replace('#include <lights_fragment_begin>', NO_DIRECT);
-    if ('MPS_IBL_SCALE' in defines) fs = fs.replace('#include <lights_fragment_maps>', IBL_SCALED);
+    if ('MPS_IBL_SCALE' in defines) fs = fs.replace('#include <lights_fragment_maps>', 'MPS_IRR' in defines ? IBL_SNOW : IBL_SCALED);
     if ('MPS_RAMP' in defines) fs = fs.replace('#include <lights_physical_pars_fragment>', RAMP_DIRECT);
+    if ('MPS_FLUID' in defines) fs = fs.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FLUID_NORMAL}`);
     let tail = '';
     if ('MPS_RIM' in defines)
       tail += `{
@@ -498,7 +633,7 @@ function patch(
   #endif
   outgoingLight += mpsRimColor * mpsLc * pow( max( mpsNv, 1e-4 ), mpsRimPower ) * mpsRimScale;
 }\n`;
-    if ('MPS_TINT' in defines) tail += 'outgoingLight *= texture2D( mpsTint, vec2( 1.0, 0.0 ) ).rgb;\n';
+    if ('MPS_TINT' in defines) tail += `outgoingLight *= texture2D( mpsTint, vec2( ${'MPS_FLUID' in defines ? '-vMpsFluidH' : '1.0'}, 0.0 ) ).rgb;\n`;
     if (tail) fs = fs.replace('#include <opaque_fragment>', `${tail}#include <opaque_fragment>`);
     sh.fragmentShader = fs;
   };

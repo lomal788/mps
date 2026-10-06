@@ -9,14 +9,16 @@
  *     three 재질을 만든다. 재질 애니(fmab)는 texsrt0~3 전 성분·blendColor 를 재질 조종(MpsMaterialCtl.setAnim)에 그대로 넘긴다.
  *     ocean flowmap_time(물)은 쓰지 않는다.
  *   - 평행광·그림자·IBL(HDR 큐브)·안개는 lighting.ts(StageLighting)가 원본 판독대로 건다 — 판독·근사 목록은 그 파일 머리 주석.
- *     캐릭터는 chara_rad 를 envMap 으로(character.ts). 눈덩이 자체 IBL(snowball_rad/irr)은 쓰지 않는다.
+ *     캐릭터는 chara_rad 를 envMap 으로(character.ts). 눈덩이 자체 IBL 은 확산 irr(snowball_irr)만 쓰고 반사 rad 는 장면 큐브로 대신한다.
  *   - 물 반사(ice_rev, render_reflection·반사 뒤집기 y −33)는 그리지 않는다(생략).
- *   - 눈 자국 높이장(hsmg402_fluid: 512², 19×19, 깊이 0.3)은 생략한다 — 쓰기 식 미확정(docs/minigame/hsmg402.md 7.5).
+ *   - 눈 자국 높이장(hsmg402_fluid: 512², 19×19, 깊이 0.3)은 fluid.ts(SnowFluid)가 원본 판독 식으로 굴리고, 지면 fld_snow_fluid_mt 가
+ *     material.ts MPS_FLUID 로 읽는다(정점 변위·노멀·최종 곱). 재질 변환 전에 높이장을 만들어야 지면 재질에 훅이 걸린다(docs/minigame/hsmg402.md 7.5).
  */
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Assets } from '../../../view/assets';
+import { SnowFluid } from './fluid';
 import { type LightingEnv, StageLighting } from './lighting';
 import { convertFres, ctlOf, FresLibrary, fresKey, fresOf, setActiveFresLibrary } from './material';
 
@@ -186,6 +188,8 @@ export class Stage {
   readonly lighting: StageLighting;
   /** 재질 규칙·glb 밖 텍스처(material.ts) */
   private matLib: FresLibrary | null = null;
+  /** 눈 자국 높이장(fluid.ts) */
+  readonly fluid = new SnowFluid();
   charaEnv: THREE.Texture | null = null;
   loaded = false;
 
@@ -203,6 +207,11 @@ export class Stage {
       setActiveFresLibrary(lib);
     } catch (e) {
       console.warn('재질 자료(material/material.json)를 읽지 못해 기본 규칙만 쓴다', e);
+    }
+    try {
+      await this.fluid.load(assets, gl);
+    } catch (e) {
+      console.warn('눈 자국 높이장(fluid/fluid.json)을 만들지 못해 평평한 지면으로 그린다', e);
     }
     let n = 0;
     for (const name of STAGE_LOOP) {
@@ -240,6 +249,7 @@ export class Stage {
   dispose(): void {
     for (const m of this.models) m.dispose();
     this.models.length = 0;
+    this.fluid.dispose();
     this.lighting.dispose();
     setActiveFresLibrary(null);
     this.matLib?.dispose();

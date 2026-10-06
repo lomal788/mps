@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { FresLibrary, fresKey, type MaterialData } from '../script/games/hsmg402/view/material';
+import { FresLibrary, fresKey, type MaterialData, mpsSceneEnv } from '../script/games/hsmg402/view/material';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const A = path.join(ROOT, 'assets');
@@ -26,6 +26,8 @@ function parse(file: string): Promise<{ scene: THREE.Object3D }> {
 const data = JSON.parse(fs.readFileSync(path.join(A, 'hsmg402', 'material', 'material.json'), 'utf8')) as MaterialData;
 for (const [n, e] of Object.entries(data.textures)) if (!fs.existsSync(path.join(A, 'hsmg402', e.file))) errors.push(`텍스처 없음 ${n} ${e.file}`);
 
+/* 조명 쪽이 채우는 장면 irr 큐브 자리(지면·오로라 레시피가 이것이 있을 때 MPS_IRR·MPS_AURORA_LIT 를 켠다) */
+mpsSceneEnv.irradiance.value = new THREE.CubeTexture();
 const lib = new FresLibrary((p) => p);
 lib.data = data;
 /* 텍스처 대신 빈 텍스처 */
@@ -70,12 +72,21 @@ for (const file of files) {
     const fsrc = sh.fragmentShader;
     const want: [boolean, string][] = [
       [d.includes('MPS_NO_DIRECT'), fsrc.includes('#if 0') && !fsrc.includes('#include <lights_fragment_begin>')],
-      [d.includes('MPS_IBL_SCALE'), fsrc.includes('mpsIrrScale * getIBLIrradiance')],
+      [d.includes('MPS_IBL_SCALE'), d.includes('MPS_IRR') ? fsrc.includes('textureCube( mpsIrr') && !fsrc.includes('#include <lights_fragment_maps>') : fsrc.includes('mpsIrrScale * getIBLIrradiance')],
+      [d.includes('MPS_AURORA_LIT'), fsrc.includes('textureCube( mpsIrr') && vs.includes('vMpsN =')],
       [d.includes('MPS_RAMP'), fsrc.includes('texture2D( mpsRamp')],
       [d.includes('MPS_RIM'), fsrc.includes('mpsRimColor * mpsLc')],
       [d.includes('MPS_TINT'), fsrc.includes('texture2D( mpsTint')],
     ].map(([on, ok]) => [!on || ok, ''] as [boolean, string]);
     if (want.some(([ok]) => !ok)) errors.push(`${key}:${src.name} 셰이더 치환 실패 ${d.join(',')}`);
+    /* 끼워 넣은 이름(mps*·vMps*)마다 선언이 있는지 — 선언 누락은 WebGL 컴파일에서만 드러나므로 여기서 본다 */
+    for (const [stage, src3] of [['vs', vs], ['fs', fsrc]] as const) {
+      const used = new Set(src3.match(/\bv?[mM]ps[A-Z]\w*/g) ?? []);
+      for (const name of used) {
+        const decl = new RegExp(String.raw`\b(uniform|varying|attribute|const|float|vec2|vec3|vec4|mat3|sampler2D|samplerCube)\s+(highp\s+|mediump\s+)?` + name + String.raw`\b`);
+        if (!decl.test(src3)) errors.push(`${key}:${src.name} ${stage} 선언 없음 ${name}`);
+      }
+    }
     const extras = Object.keys(sh.uniforms).filter((k) => /^mpsT\d$/.test(k)).length;
     if (extras && (!vs.includes('vMpsUv0 =') || !fsrc.includes('mpsTex0()'))) errors.push(`${key}:${src.name} 그래프 텍스처 치환 실패`);
     const tx = (['map', 'normalMap', 'lightMap', 'emissiveMap'] as const)

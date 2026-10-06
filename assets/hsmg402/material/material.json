@@ -34,6 +34,12 @@
    "srgb": true,
    "format": "BC7_SRGB"
   },
+  "hsmg402_aurora_grad01": {
+   "file": "material/tex/hsmg402_aurora_grad01.png",
+   "hdr": false,
+   "srgb": true,
+   "format": "BC7_SRGB"
+  },
   "hsmg402_aurora_mask": {
    "file": "material/tex/hsmg402_aurora_mask.png",
    "hdr": false,
@@ -57,6 +63,20 @@
    "hdr": false,
    "srgb": true,
    "format": "BC1_SRGB"
+  },
+  "hsmg402_snowball_irr": {
+   "file": "material/tex/hsmg402_snowball_irr_00.hdr",
+   "hdr": true,
+   "srgb": false,
+   "format": "BC6H_UFLOAT",
+   "cube": [
+    "material/tex/hsmg402_snowball_irr_00.hdr",
+    "material/tex/hsmg402_snowball_irr_01.hdr",
+    "material/tex/hsmg402_snowball_irr_02.hdr",
+    "material/tex/hsmg402_snowball_irr_03.hdr",
+    "material/tex/hsmg402_snowball_irr_04.hdr",
+    "material/tex/hsmg402_snowball_irr_05.hdr"
+   ]
   }
  },
  "rules": {

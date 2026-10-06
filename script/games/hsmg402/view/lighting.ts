@@ -14,17 +14,18 @@
  *       d = |월드 위치 − 카메라 위치|, T = sat( sat( (end − d)/(end − start)·fog_param.z ) + (1 − fog_color.a) ),
  *       색 = mix( irr 큐브(dir=(x,y,−z), lod 7−7T), 표면, T ). (60, 1000, 0.95) → 안개 양 1−T 는 d=10.53 에서 0, d=1000 에서 1 인 직선.
  * 근사 [근사]:
- *   - 직접광 세기: 원본 forward_plus 셰이더 전체에 1/π 상수가 없다(정렬 상수·32비트·20비트 즉치 모두 0건) [데이터] → 원본 확산 = albedo·color·N·L 로
- *     보고 three(albedo/π)를 상쇄하려 intensity = π·max(color), color = color/max 로 둔다 [추정].
- *   - IBL: rad 큐브(HDR, BC6H 디코드 .hdr) 를 PMREM 으로 scene.environment(확산·반사 둘 다). 원본은 확산에 irr 큐브를 따로 쓴다.
+ *   - 직접광 세기: 원본 확산 = albedo·color·N·L(1/π 없음, color = Env+0x10 = 재질 color 그대로) — 오로라 p128·눈 p384 FS 에서 확인 [판독].
+ *     three(albedo/π)를 상쇄하려 intensity = π·max(color), color = color/max 로 둔다(셰이더가 직접 식을 짜는 곳은 ÷π 해서 원본 색을 쓴다).
+ *   - IBL: rad 큐브(HDR, BC6H 디코드 .hdr) 를 PMREM 으로 scene.environment(반사, 그리고 눈·오로라 밖 재질의 확산). 원본은 확산에 irr 큐브를 따로 쓴다.
+ *     irr 큐브는 material.ts mpsSceneEnv 로 넘겨 눈 그래프·오로라 그래프가 원본처럼 직접 읽는다(평행광 원본 색·L 도 같이).
  *     캐릭터는 chara_rad 를 charaEnv 로(재질 쪽에서 envMap 으로 건다).
  *   - 안개: three 청크(fog_vertex/fog_fragment)를 반지름 거리·직선 식으로 바꿔 끼우고(dispose 때 되돌림), 색은 irr 큐브 전체 평균 한 색으로 둔다
  *     (원본은 방향별 큐브 색). 안개 양 상한(fog_color.a < 1 일 때)은 반영하지 않는다(데이터 a = 1).
  *   - 그림자 bias 0.5·normalBias 1 의 단위는 미판독이라 three 값은 눈으로 맞춘 근사, shadowmapSize 0 → 2048.
  */
 import * as THREE from 'three';
-import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader.js';
 import type { Assets } from '../../../view/assets';
+import { loadMpsHdrCube, mpsSceneEnv } from './material';
 
 export interface LightEnv {
   color: number[];
@@ -110,28 +111,6 @@ const FOG_FRAGMENT = /* glsl */ `
 #endif
 `;
 
-/** 큐브 면 데이터를 제자리에서 180° 돌린다(화소 순서 뒤집기) */
-function rotateFace180(tex: THREE.DataTexture): void {
-  const img = tex.image as { data: Uint16Array | Float32Array; width: number; height: number };
-  const n = img.width * img.height;
-  const src = img.data.slice();
-  for (let p = 0; p < n; p++) {
-    const q = n - 1 - p;
-    for (let c = 0; c < 4; c++) img.data[p * 4 + c] = src[q * 4 + c];
-  }
-}
-
-/** HDR 큐브 6면(원본 면 순서 +X −X +Y −Y +Z −Z)을 원본 조회 규약에 맞춰 three CubeTexture 로 */
-async function loadHdrCube(assets: Assets, faces: string[]): Promise<THREE.CubeTexture> {
-  const order = [faces[1], faces[0], faces[2], faces[3], faces[5], faces[4]].map((f) => assets.url(f));
-  const cube = await new HDRCubeTextureLoader().setDataType(THREE.HalfFloatType).loadAsync(order);
-  const imgs = cube.images as THREE.DataTexture[];
-  rotateFace180(imgs[2]);
-  rotateFace180(imgs[3]);
-  cube.needsUpdate = true;
-  return cube;
-}
-
 /** 큐브 전체 화소 평균(선형) */
 function cubeMean(cube: THREE.CubeTexture): THREE.Color {
   let r = 0;
@@ -175,7 +154,7 @@ export class StageLighting {
     try {
       this.pmrem = new THREE.PMREMGenerator(gl);
       if (hdr.hsmg402_rad) {
-        const rad = await loadHdrCube(assets, hdr.hsmg402_rad);
+        const rad = await loadMpsHdrCube(hdr.hsmg402_rad.map((f) => assets.url(f)));
         this.cubes.push(rad);
         const rt = this.pmrem.fromCubemap(rad);
         this.rts.push(rt);
@@ -184,15 +163,17 @@ export class StageLighting {
         this.scene.environmentRotation.set(0, ((ibl.ibl_rotate_y ?? 0) * Math.PI) / 180, 0);
       }
       if (hdr.hsmg402_chara_rad) {
-        const crad = await loadHdrCube(assets, hdr.hsmg402_chara_rad);
+        const crad = await loadMpsHdrCube(hdr.hsmg402_chara_rad.map((f) => assets.url(f)));
         this.cubes.push(crad);
         const rt = this.pmrem.fromCubemap(crad);
         this.rts.push(rt);
         this.charaEnv = rt.texture;
       }
       if (hdr.hsmg402_irr) {
-        irr = await loadHdrCube(assets, hdr.hsmg402_irr);
+        irr = await loadMpsHdrCube(hdr.hsmg402_irr.map((f) => assets.url(f)));
         this.cubes.push(irr);
+        mpsSceneEnv.irradiance.value = irr;
+        mpsSceneEnv.irrScale.value = ibl.common_irradiance_scale ?? 1;
       }
     } catch (e) {
       console.warn('IBL 큐브(hdr)를 읽지 못했다', e);
@@ -207,6 +188,8 @@ export class StageLighting {
     this.light.intensity = Math.PI * k;
     const lp = p.lightPosition;
     this.toward.copy(lightToward(p.lightRotation));
+    mpsSceneEnv.lightColor.value.set(c[0], c[1], c[2]);
+    mpsSceneEnv.lightDir.value.copy(this.toward);
     this.light.position.set(lp[0], lp[1], lp[2]);
     this.light.target.position.set(lp[0], lp[1], lp[2]).sub(this.toward);
     const sc = this.light.shadow.camera;
@@ -248,6 +231,7 @@ export class StageLighting {
     }
     for (const rt of this.rts) rt.dispose();
     for (const c of this.cubes) c.dispose();
+    mpsSceneEnv.irradiance.value = null;
     this.pmrem?.dispose();
     this.light.shadow.dispose();
     this.light.dispose();

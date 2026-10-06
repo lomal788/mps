@@ -1,6 +1,6 @@
 /**
  * hsmg402 데굴데굴 눈덩이 화면 — 로직 state(state.ts 계약)만 읽고 three.js·소리·UI 를 그린다. 원본 근거·근사 목록은 각 파일 머리 주석:
- *   stage.ts(무대·조명·안개·IBL·재질 근사), character.ts(캐릭터·모션·눈), balls.ts(눈덩이·부서짐), effects.ts(이펙트 — VFXB v40 원본 이미터 수치, 런타임 view/vfx.ts),
+ *   stage.ts(무대·조명·안개·IBL·재질 근사), fluid.ts(눈 자국 높이장 — 원본 붓·복원·노멀 식), character.ts(캐릭터·모션·눈), balls.ts(눈덩이·부서짐), effects.ts(이펙트 — VFXB v40 원본 이미터 수치, 런타임 view/vfx.ts),
  *   camera.ts(cam_op/cam·결과 카메라), sound.ts(SE·BGM·보이스·3D), ui.ts(가이드·타이머·텔롭·진동), post.ts(블룸·톤맵·FXAA·비네트).
  * 에셋: assets/hsmg402/manifest.json + assets/chara(web/tools/analysis/hsmg402_web_assets.py). 모델을 못 읽으면 상자·구로 그린다(디버그 대체).
  *
@@ -125,6 +125,7 @@ export class Hsmg402View implements GameView<Hsmg402State, Hsmg402Event> {
       const [ball, brk] = await Promise.all([this.assets.gltf(man.models.hsmg402_snowball.file), this.assets.gltf(man.models.hsmg402_snowball_break.file)]);
       const brkAnim = man.anims['hsmg402_snowball_break.fmab'] ? await loadMatAnim(this.assets, man.anims['hsmg402_snowball_break.fmab']) : null;
       this.balls = new BallPool(this.scene, ball, man.models.hsmg402_snowball, brk, man.models.hsmg402_snowball_break, brkAnim);
+      this.stage.fluid.setBallModel(ball);
     } catch (e) {
       console.warn('눈덩이 모델을 읽지 못해 구로 그린다', e);
     }
@@ -355,6 +356,7 @@ export class Hsmg402View implements GameView<Hsmg402State, Hsmg402Event> {
           m.scale.setScalar(b.scale);
         }
       });
+    this.stage.fluid.update(this.ctx.renderer.gl, state, this.actors);
     this.fx.update(dt, state.frame);
     this.rig.update(state);
     this.freeControls?.update();
