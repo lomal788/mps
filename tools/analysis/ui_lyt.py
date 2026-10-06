@@ -293,6 +293,9 @@ def read_prt(b, sec, chk, ver, mats, fonts, textures):
                 pr["userData"] = read_usd(b, sec + unk)
         if pinfo:
             pr["paneInfoOffset"] = pinfo
+            ud0, ud1, tx, ty, tz, rx, ry, rz, sx, sy, w, h = struct.unpack_from("<II10f", b, sec + pinfo)
+            pr["basicInfo"] = {"translate": [tx, ty, tz], "rotate": [rx, ry, rz], "scale": [sx, sy], "size": [w, h],
+                               "alpha": b[sec + pinfo + 48]}
         props.append(pr)
         p += 0x28
     d["properties"] = props

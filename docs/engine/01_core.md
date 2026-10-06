@@ -222,12 +222,12 @@ if (state < 0x10 && 강제 종료 조건) { ...; RequestExitGame(); }
 | 4 | `@0x710008ad48` | OnGameFirstFade(0x100), 페이드 인(0.23333 문턱) | 5 |
 | 5 | `@0x710008aeac` | OnGameOpening(0x108), 오프닝 스킵 | 6 |
 | 6 | `@0x710008af6c` | OnGameStartBefore(0x110), 페이드 | 7 |
-| 7 | `@0x710008b0e8` | OnGameStart(0x118), 시작 텔롭·카운트다운, `UITimer::StartTimer`, `UIPause::Start` | 8 |
+| 7 | `@0x710008b0e8` | OnGameStart(0x118), 시작 텔롭(기반 UIMGTelop type 0)·카운트다운, 텔롭 끝에 호루라기, `UITimer::StartTimer`, `UIPause::Start` — 소리는 [04_sound_flow.md](04_sound_flow.md) 3절 | 8 |
 | 8 | `@0x710008b99c` | OnGameStartAfter(0x120), `SysMiniGameMgr::PlayerCtrlStart` | 9 |
 | 9 | `@0x710008bab4` | **OnGameMain(0x128)** 또는 승패 판정 → `PlayerCtrlEnd(1.0)` | 10 |
 | 10 | `@0x710008bc68` | OnGameMainEnd(0x130), 라운드 수 +0x2D0++ | 11 / 8(다음 라운드) / 12 |
 | 11 | `@0x710008bd28` | OnGameNextRound(0x138) | 12 |
-| 12 | `@0x710008bd84` | OnGameFinish(0x140), 결과 처리(부속 단계 0~2) | 대기 0xC / 인스트 0x10 / 진행 대상은 [미확정] |
+| 12 | `@0x710008bd84` | OnGameFinish(0x140): 부속 0 FINISH 텔롭(type 2) Start·BGM 정지·`StopBatch_Type(7,1)`·타이머 정지, 1 텔롭 out 시작 → 대기 설정, 2 텔롭 끝·대기 0 → `MinigameUIControl(6)`(04_sound_flow 3절) | 대기 0xC / 인스트 0x10 / 13(게임 모드 4·5 → 0x12) |
 | 13 | `@0x710008c694` | OnGameEndingBefore(0x148) | 14 |
 | 14 | `@0x710008c724` | OnGameEnding(0x150) | 참: 15 |
 | 15 | `@0x710008c74c` | OnGameEndingAfter(0x158) (미니게임 ID 0x61·0x62 이고 1인이면 별도 분기) | 대기 0xF / 진행 대상 [미확정] |

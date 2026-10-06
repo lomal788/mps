@@ -23,7 +23,7 @@
  *   - renderInfo state_type 0 불투명 / 1 컷아웃(punchThroughThresholdColor) / 2 알파 섞기 / 3 더하기 [추정: 쓰는 재질 상관 — DK 털·속눈썹·구름·부서짐·오로라·하늘띠]
  *   - face_cull_type 0 뒷면 컬링 / 1 앞면 컬링 / 2 양면 [추정: 데이터 상관]
  *   - 디테일 맵(_r1/_n1·_r3/_n3)·클리어코트·구름 그림자·라이트그리드·국소 반사 IBL(재질 rad 큐브)·물·VAT·정점 셰이더 그래프는 옮기지 않는다
- *     (예외: 유체 높이장 정점 그래프 2881520328 은 MPS_FLUID 로 옮긴다 — 높이장은 hsmg402 view/fluid.ts)
+ *     (예외: 유체 높이장 정점 그래프 2881520328 은 MPS_FLUID 로 옮긴다 — 높이장은 hsmg402 view/fluid.ts. 그림자 깊이도 같은 변위·앞면(mpsFluidDepthMaterial))
  *     (눈 그래프의 국소 irr 큐브는 쓴다 — material.json textures 의 cube 항목)
  *   - 샘플러 래핑은 glb 샘플러(원본 fmdb wrapU/V)를 그대로 둔다. glb 밖 텍스처는 Repeat, 눈 램프 fld_dif 만 원본대로 Clamp [데이터]
  */
@@ -284,6 +284,25 @@ const FLUID_VERTEX = `{
 }`;
 
 const FLUID_NORMAL = 'normal = normalize( normal + ( viewMatrix * vec4( normalize( texture2D( mpsFluidNormal, vMpsFluidUv ).xyz ), 0.0 ) ).xyz );';
+
+const FLUID_VDECL = 'uniform sampler2D mpsFluidHeight;\nuniform vec4 mpsFluidRect;\nuniform float mpsFluidDepth;\nvarying vec2 vMpsFluidUv;\nvarying float vMpsFluidH;\n';
+
+/**
+ * 지면 윗면 그림자 깊이 재질: 깊이 전용 변형(shader_type 1, p385) VS 도 같은 높이장 변위를 한다 [판독] → 그림자 맵에도 변위한 모양.
+ * 컬링은 재질 face_cull_type 그대로(앞면을 그림) [추정: 윗면만 cast_shadow 1, 참고 이미지의 홈 안 그늘] — 재질 shadowSide 로 건다
+ */
+export function mpsFluidDepthMaterial(): THREE.MeshDepthMaterial {
+  const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  m.name = 'mps_fluid_depth';
+  m.customProgramCacheKey = () => 'mps|fluid_depth';
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { mpsFluidHeight: mpsFluidEnv.height, mpsFluidRect: mpsFluidEnv.rect, mpsFluidDepth: mpsFluidEnv.depth });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>\n${FLUID_VDECL}`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${FLUID_VERTEX}`);
+  };
+  return m;
+}
 
 /** 큐브 면 데이터를 제자리에서 180° 돌린다(화소 순서 뒤집기) */
 function rotateFace180(tex: THREE.DataTexture): void {
@@ -556,6 +575,10 @@ export class FresLibrary {
     }
     const cull = ri.face_cull_type?.[0] ?? 0;
     m.side = cull === 2 ? THREE.DoubleSide : cull === 1 ? THREE.BackSide : THREE.FrontSide;
+    if ('MPS_FLUID' in defines) {
+      m.shadowSide = m.side;
+      m.userData.mpsDepth = mpsFluidDepthMaterial();
+    }
     m.fog = opt.use_fog === '1';
     if (m instanceof THREE.MeshBasicMaterial) m.color.setRGB(blend[0], blend[1], blend[2], THREE.LinearSRGBColorSpace);
 
@@ -612,7 +635,7 @@ function patch(
     if ('mpsEmission' in uniforms) fdecl += 'uniform float mpsEmission;\n';
     if ('mpsUtil0' in uniforms) fdecl += 'uniform vec3 mpsUtil0;\n';
     if ('MPS_FLUID' in defines) {
-      vdecl += 'uniform sampler2D mpsFluidHeight;\nuniform vec4 mpsFluidRect;\nuniform float mpsFluidDepth;\nvarying vec2 vMpsFluidUv;\nvarying float vMpsFluidH;\n';
+      vdecl += FLUID_VDECL;
       fdecl += 'uniform sampler2D mpsFluidNormal;\nvarying vec2 vMpsFluidUv;\nvarying float vMpsFluidH;\n';
     }
     sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\n${vdecl}`).replace('#include <uv_vertex>', `#include <uv_vertex>\n${vbody}`);

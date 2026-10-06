@@ -16,7 +16,8 @@
  *   - M160(모델 유체 높이 배율) = 1 [추정: GetModelFluidHeightMapScale 기본 반환 1, hsmg402 는 설정 호출 없음]
  *   - 높이장 형식 미판독 → float + [−1, 1] 자르기 [추정: SNORM]. 홈이 −0.65 아래로 파이면 아래 지면 snow(y 0)가 바닥이 된다
  *   - 웹 렌더 1회에 지난 로직 프레임 n 개를 묶는다: 붓 n·sat(10·d/n), add n·0.00015
- *   - fld_clear 행 0(png 위) = z −9.5 [추정: 복사 패스가 텍셀 그대로]. 붓 셰이더의 속도 타깃(simulation 0 이라 안 씀)·그림자 패스 변위는 생략
+ *   - fld_clear 행 0(png 위) = z −9.5 [추정: 복사 패스가 텍셀 그대로]. 붓 셰이더의 속도 타깃(simulation 0 이라 안 씀)은 생략
+ *   - 그림자 맵: 깊이 전용 변형(shader_type 1, p385)도 같은 변위 [판독] → material.ts mpsFluidDepthMaterial(앞면 캐스터 [추정])
  *   - SetSystemScaleVec((2,1,2)) 는 Actor 배율(damageActor)에 곱해지는 값 — 시작 때 발 붓은 utilityParameter0 = 0 이라 영향 없음, 웹은 무시
  */
 import * as THREE from 'three';

@@ -227,6 +227,8 @@ lmp(util0) 와 gi(util2) 를 어떤 계수로 섞고(mix(gi, lmp, k)), ao(util1)
 
 **지면 `fld_snow_fluid_mt`(정점 그래프 2881520328, p384) [판독].** VS: 월드 위치로 위 UV, **h = 높이 RT(LOD 0).r, 월드 y += h·(+0x400)**, v6.w = −h(반사 뒤집기 M[0x128]·M[0x15c] 는 y 에 곱·더함). FS: n_f = normalize(노멀 RT(+0x540).rgb), **N = normalize(N_면(노멀 맵 적용) + n_f)**, 3면 투영 거칠기 노이즈의 가중치도 n_f², 최종 rgb × fld_sg_alb(**−h**, 0)(Wrap). 메시: 윗면 y 0.196(r < 7.5), 정점 간격 0.127 m(17,233 정점) — 정점 변위로 실제 파인다. 바로 아래 `fld_snow_mt` 지면이 y 0(간격 0.6 m)이라 h < −0.653 이면 그 면이 홈 바닥으로 보인다 [데이터].
 
+**그림자 맵(지면 자기 그림자) [판독 + 추정, 2026-10-06 fluid-depth 담당].** 같은 정적 키의 동적 옵션 `shader_type` 0~3 = p384~p387(`analysis/mat/prog_st/` — `bfsha_dump match` 에 옵션 `shader_type` 을 더한 입력 `st_mats_in.json`, SASS 는 `analysis/mat/sass/…p385~p387`, `sass_dis.PROG` 를 그 폴더로 바꿔 풂). **p385(shader_type 1) = 샘플러 0개, FS 는 상수 1 출력, VS 는 월드 위치(+ 법선·normalDirectionOffsetScale(0), + View+0x1a0·backgraoundMode(0)) → Env+0x538 높이장 LOD 0 → y += h·Env+0x400 → View+0x70 행렬** — 깊이 전용 변형도 p384 와 같은 변위를 한다(`check_hsmg402_fluid.ts` 에뮬 대조 최대 오차 7.1e-7). p386·p387 VS 도 변위. nd 셰이더 폴더에 별도 그림자 아카이브 없음(classic/pbr 의 shadowmap*.bfsha 는 nn::bezel 구 렌더러용) [판독]. 동적 옵션 이름표(main 0x14b7418~, `shader_type` = 0x14b7498)는 GOT 0x15952e8 → 0x710042ef9c(셰이딩 모델별 옵션 색인 초기화)에서만 읽혀 패스별 값은 미판독 → "그림자 = shader_type 1" 은 [추정]. 캐스터: `fld_snow_fluid_mt` cast_shadow 1, `fld_snow_mt` 0 [데이터] — 위를 보는 한 겹 윗면이 그림자를 드리우려면 앞면을 그려야 하므로 그림자 패스 컬링 = 재질 face_cull_type [추정 + 참고 이미지]. 홈 단면 재구현(`web/tools/analysis/hsmg402_fluid_groove_calc.py`): 원본 식 홈/평지 sRGB 비 (0.62, 0.60, 0.75), 자기 그림자 없는 웹 (0.76, 0.82, 0.91) [재구현 계산] — 대비 차이는 거의 전부 이 그림자다(노멀·Sobel·N 합·RT 하한·붓·램프·AO 는 원본과 같음, hsmg402.md 7.5).
+
 ---
 
 ## 8. texsrt [판독 + 추정]
@@ -274,12 +276,12 @@ lmp(util0) 와 gi(util2) 를 어떤 계수로 섞고(mix(gi, lmp, k)), ao(util1)
 13. 샘플러 래핑: glb 샘플러(원본 fmdb wrapU/V)를 그대로 둔다(고치기 전에는 모두 Repeat 로 덮어써 sky_grad(wrapV Clamp) 윗변 v = −0.206 이 0.794 로 감겨 알파 0.84 의 딱딱한 띠가 됐다 → Clamp 면 0.004) [데이터 + 재구현 계산].
 14. `state_type` 1 → alphaTest(punchThroughThresholdColor), 2 → 투명(깊이 쓰기 끔), 3 → 투명 + 더하기. `face_cull_type` 0/1/2 → Front/Back/Double side. `use_fog` → fog.
 15. 캐릭터 눈은 character.ts 의 기존 셰이더(눈꺼풀 repeat/offset + 홍채 겹침)를 유지하고 흰자만 utilityColor0 으로 바꿨다(눈꺼풀 맵 복제본은 matrixAutoUpdate 를 다시 켠다).
-16. 정점 그래프 2881520328(지면 fld_snow_fluid_mt) + `mpsFluidEnv`(높이·노멀 텍스처가 있을 때) → `MPS_FLUID`: begin_vertex 뒤 월드 y += h·깊이, normal_fragment_maps 뒤 N = normalize(N + 뷰 공간 n_f), 최종 곱 u = −h(7.6). 높이장·붓은 게임 쪽 `games/hsmg402/view/fluid.ts`(SnowFluid)가 굴린다 — 유체 붓 재질(forward_plus_fluid)은 장면에서 숨기고 그 메시를 별도 붓 장면에서 원본 식으로 그린다.
+16. 정점 그래프 2881520328(지면 fld_snow_fluid_mt) + `mpsFluidEnv`(높이·노멀 텍스처가 있을 때) → `MPS_FLUID`: begin_vertex 뒤 월드 y += h·깊이, normal_fragment_maps 뒤 N = normalize(N + 뷰 공간 n_f), 최종 곱 u = −h(7.6). 그림자: 재질 `shadowSide` = 재질 면(앞면), `userData.mpsDepth` = `mpsFluidDepthMaterial()`(MeshDepthMaterial RGBA 패킹 + 같은 FLUID_VERTEX) → stage.ts 가 그 메시 `customDepthMaterial` 로 건다(three 기본은 FrontSide 재질의 그림자를 뒷면으로 그려 한 겹 지면이 그림자를 못 드리운다). 높이장·붓은 게임 쪽 `games/hsmg402/view/fluid.ts`(SnowFluid)가 굴린다 — 유체 붓 재질(forward_plus_fluid)은 장면에서 숨기고 그 메시를 별도 붓 장면에서 원본 식으로 그린다.
 
 원본 텍스처에 틴트·외곽선을 더하지 않는다. 지면 최종 곱(fld_sg_alb)과 blendColor 는 원본 셰이더가 하는 곱이다.
 
 ### 10.1 옮기지 않은 것 [근사]
-디테일 맵, 클리어코트, 층 텍스처(`use_layer_tex`), 구름 그림자(env 에서 꺼짐), 라이트 그리드, 국소 반사 IBL(눈덩이 snowball_rad → 장면 rad PMREM 으로 대신, 확산 snowball_irr 는 씀), 시차 보정 큐브, 라이트맵 알파(IBL 가림), 물(ocean flowmap·반사), 유체 노멀 3면 투영 가중치·그림자 패스의 지면 변위, 지면 거칠기 노이즈, 눈 림의 rimlightShadow 항(눈덩이 0.15), 오로라 반사 항·정점 변위(noise_alb), 오로라 노멀의 스키닝, 절벽 gi·ao 섞기, 캐릭터 피부·옷 산란(cvt·LUT·3D), 요시·캐서린 등 눈 그래프 차이. 일반 재질의 확산 IBL 은 irr 큐브 대신 rad PMREM.
+디테일 맵, 클리어코트, 층 텍스처(`use_layer_tex`), 구름 그림자(env 에서 꺼짐), 라이트 그리드, 국소 반사 IBL(눈덩이 snowball_rad → 장면 rad PMREM 으로 대신, 확산 snowball_irr 는 씀), 시차 보정 큐브, 라이트맵 알파(IBL 가림), 물(ocean flowmap·반사), 유체 노멀 3면 투영 가중치, 지면 거칠기 노이즈, 눈 림의 rimlightShadow 항(눈덩이 0.15), 오로라 반사 항·정점 변위(noise_alb), 오로라 노멀의 스키닝, 절벽 gi·ao 섞기, 캐릭터 피부·옷 산란(cvt·LUT·3D), 요시·캐서린 등 눈 그래프 차이. 일반 재질의 확산 IBL 은 irr 큐브 대신 rad PMREM.
 
 ---
 
@@ -291,7 +293,7 @@ lmp(util0) 와 gi(util2) 를 어떤 계수로 섞고(mix(gi, lmp, k)), ao(util1)
 | envydis 디스어셈블 | 72 프로그램 × VS/FS. 알 수 없는 명령은 무대 ≤ 2줄·캐릭터 ≤ 11줄/파일(전부 `mufu` 한 변형 — 노멀 z = sqrt 자리) |
 | UBO·샘플러 바인딩 규칙 | sky(Material 위치 9 → c12, 샘플러 위치 0 → 핸들 0x8), tree(위치 2/5/7 → 0xc/0x12/0x16) 에서 확인 후 전 프로그램에 적용, 이름이 의미와 맞음 |
 | `web/tools/check_hsmg402_material.ts` | 77 재질 변환, 셰이더 치환 실패 0, material.json 텍스처 파일 누락 0 |
-| `web/tools/check_hsmg402_fluid.ts` (7.6) | 원본 기계어 에뮬 vs 웹 식 최대 오차: 눈덩이 붓 1.0e-7(2000), 캐릭터 붓 p0·p6·p12 ≤ 7.3e-8(각 3000), 지면 VS 변위·UV 3.2e-7(500), fluid_normal 5.6e-16(300). Env 칸·블렌드 표(Add/Min/Max)·붓 블렌드 바이트·fmdb 파라미터·붓 텍스처 부호·지면 훅 선언 — 오류 0 |
+| `web/tools/check_hsmg402_fluid.ts` (7.6) | 원본 기계어 에뮬 vs 웹 식 최대 오차: 눈덩이 붓 1.0e-7(2000), 캐릭터 붓 p0·p6·p12 ≤ 7.3e-8(각 3000), 지면 VS 변위·UV 3.2e-7(500), fluid_normal 5.6e-16(300), 깊이 전용 VS p385 변위 7.1e-7(500), 지면 그림자 깊이 재질(선언·변위 위치·shadowSide·uniform 공유). Env 칸·블렌드 표(Add/Min/Max)·붓 블렌드 바이트·fmdb 파라미터·붓 텍스처 부호·지면 훅 선언 — 오류 0 |
 | `npx tsc --noEmit`, `test_hsmg402.ts`(290/290), `check_hsmg402_assets.ts`(오류 0) | 통과 |
 | 화면 | 하지 않음(메인이 마지막 1회) |
 
@@ -306,5 +308,5 @@ lmp(util0) 와 gi(util2) 를 어떤 계수로 섞고(mix(gi, lmp, k)), ao(util1)
 | 디테일 맵 섞기 모드(use_detail_* 0~3) | map p0/p192 FS 판독 |
 | bezel_pbr `basecolor_source` 0~3 뜻 | bezel_pbr.bfsha 프로그램 코드(쓰는 재질 20개) |
 | Env+0x264 = lightmap_color_scale | EnvironmentParamBuffer 를 채우는 main 코드 |
-| 유체: 높이 RT 형식(설정표 인덱스 0x15 — SNORM/float, 값 범위), M[0x160] 기본값(1 추정), TLD4 성분 순서, fld_clear 행 0 = z −9.5 여부 | NdRender+0x50 RT 설정표를 채우는 코드, 모델 렌더 자료 생성자, 원본 실행 화면(홈 깊이·방향) |
+| 유체: 높이 RT 형식(설정표 인덱스 0x15 — SNORM/float, 값 범위; 화면 영향 작음), M[0x160] 기본값(1 추정), TLD4 성분 순서, fld_clear 행 0 = z −9.5 여부, 그림자 패스의 shader_type 값·래스터(컬링) 상태 | NdRender+0x50 RT 설정표를 채우는 코드, 모델 렌더 자료 생성자, 원본 실행 화면(홈 깊이·방향) |
 | Pillow BC4S 디코드 오류 — `graphics_bntx.py` 의 BC4/BC5 SNORM png(예 pcNN_foot_hgt)는 부호 끝점 보간이 틀린 raw 비트다. 유체 붓은 `hsmg402_fluid_assets.py` 가 직접 디코드 | graphics_bntx.py 를 직접 디코드로 바꾸기(다른 담당) |

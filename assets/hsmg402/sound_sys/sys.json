@@ -1,0 +1,673 @@
+{
+ "note": "web/tools/analysis/hsmg402_sys_sound_assets.py — 공용 흐름 텔롭·호루라기 소리(원본 디코드 그대로)",
+ "sounds": {
+  "SQ_SE_TLP_START": {
+   "kind": "seq",
+   "bus": "se",
+   "player": {
+    "name": "PLY_SE_DUMMY",
+    "max": 12
+   },
+   "playerPriority": 0,
+   "sound3d": {
+    "flags": 7,
+    "decayRatio": 0.5,
+    "decayCurve": 1,
+    "dopplerFactor": 0
+   },
+   "seq": {
+    "volume": 0,
+    "data": "xgD/xgCAAYkDAAD/AAAAAAAAAAAAAAAA",
+    "start": 0,
+    "banks": [
+     {
+      "instruments": []
+     }
+    ],
+    "waves": []
+   }
+  },
+  "SQ_SE_TLP_FINISH": {
+   "kind": "seq",
+   "bus": "se",
+   "player": {
+    "name": "PLY_SE_TLP",
+    "max": 2
+   },
+   "playerPriority": 108,
+   "sound3d": {
+    "flags": 7,
+    "decayRatio": 0.5,
+    "decayCurve": 1,
+    "dopplerFactor": 0
+   },
+   "seq": {
+    "volume": 22,
+    "data": "2hT92ij90HD9033903v903n903D902D900j90wD9xQKgxPD/EAD9xQKgxOD/IAD9xQKgxMD/QAD9wAD9wH/9wAD9wED9wH/9wAD9wCD9wGD9wH/9wAD9wH/98JAIAACi/fCQCAEAotV/8JAIAgCi1WzwkAgDAKLVUPCRCAQAotVA/fCQCAAAov3wkAgBAKLVf/CQCAIAotVs8JAIAwCi1WTwkQgEAKLVXP3wkAgAAKL98JAIAQCi1X/wkAgCAKLVavCQCAMAotVi8JEIBACi1V798IAoFQCh8IMoCPCCKBUA8IMo///wgSh/APCTKDAAovCAKDAA8JEofwCi8IAofwCh1Sj98IAoCQCh8IMoCPCCKAkA8IMo///wgSh/APCTKDAAovCAKDAA8JEofwCi8IAofwCh1Sj98IAoCQCh8IMoCPCCKAkA8IMo///wgSh/APCTKGAAovCAKGAA8JEofwCi8IAofwCh1Sj98IAoCQCh8IMoCPCCKAkA8IMo///wgSh/APCTKGAAovCAKGAA8JEofwCi8IAofwCh1Sj98IAoFQCh8IMoCPCCKBUA8IMo///wgSh/APCTKFUAovCAKFUA8JEofwCi8IAofwCh1Sj98IAoFQCh8IMoCPCCKBUA8IMo///wgSh/APCTKEAAovCAKEAA8JEofwCi8IAofwCh1Sj98IAoFQCh8IMoCPCCKBUA8IMo///wgSh/APCTKEAAovCAKEAA8JEofwCi8IAofwCh1Sj98JAnAACi/fCQJwEAotV/8JAnAgCi1WzwkCcDAKLVUPCRJwQAotVA/fCQJwAAov3wkCcBAKLVf/CQJwIAotVs8JAnAwCi1WTwkScEAKLVXP3wkCcAAKL98JAnAQCi1X/wkCcCAKLVavCQJwMAotVi8JEnBACi1V798IAoFQCh8IMoJ/CCKBUA8IMo///wgSh/APCTKDAAovCAKDAA8JEofwCi8IAofwCh1Sj98IAoCQCh8IMoJ/CCKAkA8IMo///wgSh/APCTKDAAovCAKDAA8JEofwCi8IAofwCh1Sj91zD91wCj1zAIAP3XMKPXfwgA/f2KCQAAgQs8fwD/igkAAIEMPH8A/4AQigkAAIEUPH8A/4oJAACBATx/AP+KCQAAgQM8fwD/igkAAIEAPH8A/4oJAACBBDx/AP+KCQAAgQU8fwD/igkAAIENPH8A/4oJAACBBzx/AP+KCQAAgQg8fwD/igkAAIEJPH8A/4oJAACBBjx/AP+KCQAAgRM8fwD/igkAAIEXPH8A/4oJAACBEjx/AP+KCQAAgRg8fwD/igkAAIEZPH8A/4oJAACBGjx/AP+KCQAAgRs8fwD/igkAAIEKPH8A//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "start": 841,
+    "banks": [
+     {
+      "instruments": [
+       null,
+       [
+        {
+         "keyMax": 127,
+         "vels": [
+          {
+           "velMax": 127,
+           "wave": 0,
+           "originalKey": 60,
+           "volume": 127,
+           "pan": 64,
+           "pitch": 1.0,
+           "adshr": [
+            127,
+            127,
+            127,
+            0,
+            127
+           ]
+          }
+         ]
+        }
+       ],
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ]
+     }
+    ],
+    "waves": [
+     {
+      "file": "sound_sys/wave/sys_war54_004.wav",
+      "rate": 48000,
+      "frames": 140430,
+      "loop": false,
+      "loopStart": 0,
+      "channels": 2
+     }
+    ]
+   }
+  },
+  "SQ_SE_SYS_WHISTLE": {
+   "kind": "seq",
+   "bus": "se",
+   "player": {
+    "name": "PLY_SE_SYS",
+    "max": 2
+   },
+   "playerPriority": 108,
+   "sound3d": {
+    "flags": 7,
+    "decayRatio": 0.5,
+    "decayCurve": 1,
+    "dopplerFactor": 0
+   },
+   "seq": {
+    "volume": 28,
+    "data": "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",
+    "start": 1108,
+    "banks": [
+     {
+      "instruments": [
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       [
+        {
+         "keyMax": 127,
+         "vels": [
+          {
+           "velMax": 127,
+           "wave": 0,
+           "originalKey": 60,
+           "volume": 127,
+           "pan": 64,
+           "pitch": 1.0,
+           "adshr": [
+            127,
+            127,
+            127,
+            0,
+            127
+           ]
+          }
+         ]
+        }
+       ],
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null,
+       null
+      ]
+     }
+    ],
+    "waves": [
+     {
+      "file": "sound_sys/wave/sys_war42_057.wav",
+      "rate": 48000,
+      "frames": 17791,
+      "loop": false,
+      "loopStart": 0,
+      "channels": 1
+     }
+    ]
+   }
+  },
+  "WD_VOI_LOC_SYS_DRAW": {
+   "kind": "stream",
+   "bus": "voice",
+   "file": "sound_sys/voice/WD_VOI_LOC_SYS_DRAW_KOKR.wav",
+   "target": "WD_VOI_LOC_SYS_DRAW_KOKR",
+   "archive": "subarc_sysvoi_kokr",
+   "volume": 45,
+   "gain": 0.354331,
+   "durationSec": 1.130979,
+   "sampleRate": 48000,
+   "frames": 54287,
+   "channels": 1,
+   "peak": 0.9552,
+   "player": {
+    "name": "PLY_VOI_SYS",
+    "max": 1
+   },
+   "playerPriority": 112,
+   "loop": null
+  },
+  "WD_VOI_LOC_SYS_FINISH": {
+   "kind": "stream",
+   "bus": "voice",
+   "file": "sound_sys/voice/WD_VOI_LOC_SYS_FINISH_KOKR.wav",
+   "target": "WD_VOI_LOC_SYS_FINISH_KOKR",
+   "archive": "subarc_sysvoi_kokr",
+   "volume": 38,
+   "gain": 0.299213,
+   "durationSec": 1.064396,
+   "sampleRate": 48000,
+   "frames": 51091,
+   "channels": 1,
+   "peak": 0.8771,
+   "player": {
+    "name": "PLY_VOI_SYS",
+    "max": 1
+   },
+   "playerPriority": 112,
+   "loop": null
+  },
+  "WD_VOI_LOC_SYS_START": {
+   "kind": "stream",
+   "bus": "voice",
+   "file": "sound_sys/voice/WD_VOI_LOC_SYS_START_KOKR.wav",
+   "target": "WD_VOI_LOC_SYS_START_KOKR",
+   "archive": "subarc_sysvoi_kokr",
+   "volume": 38,
+   "gain": 0.299213,
+   "durationSec": 0.894354,
+   "sampleRate": 48000,
+   "frames": 42929,
+   "channels": 1,
+   "peak": 0.8925,
+   "player": {
+    "name": "PLY_VOI_SYS",
+    "max": 1
+   },
+   "playerPriority": 112,
+   "loop": null
+  },
+  "WD_VOI_LOC_SYS_WINNER": {
+   "kind": "stream",
+   "bus": "voice",
+   "file": "sound_sys/voice/WD_VOI_LOC_SYS_WINNER_KOKR.wav",
+   "target": "WD_VOI_LOC_SYS_WINNER_KOKR",
+   "archive": "subarc_sysvoi_kokr",
+   "volume": 45,
+   "gain": 0.354331,
+   "durationSec": 0.943833,
+   "sampleRate": 48000,
+   "frames": 45304,
+   "channels": 1,
+   "peak": 0.8827,
+   "player": {
+    "name": "PLY_VOI_SYS",
+    "max": 1
+   },
+   "playerPriority": 112,
+   "loop": null
+  },
+  "WD_VOI_LOC_SYS_WINNERS": {
+   "kind": "stream",
+   "bus": "voice",
+   "file": "sound_sys/voice/WD_VOI_LOC_SYS_WINNERS_KOKR.wav",
+   "target": "WD_VOI_LOC_SYS_WINNERS_KOKR",
+   "archive": "subarc_sysvoi_kokr",
+   "volume": 45,
+   "gain": 0.354331,
+   "durationSec": 1.049104,
+   "sampleRate": 48000,
+   "frames": 50357,
+   "channels": 1,
+   "peak": 0.9619,
+   "player": {
+    "name": "PLY_VOI_SYS",
+    "max": 1
+   },
+   "playerPriority": 112,
+   "loop": null
+  }
+ },
+ "telop": {
+  "0": {
+   "type": 0,
+   "layout": "sys_tlp_start.bflyt",
+   "se": "SQ_SE_TLP_START",
+   "voice": "WD_VOI_LOC_SYS_START",
+   "message": "hsmg_tlp_start",
+   "anim": null,
+   "inout": 0,
+   "slot90": "SQ_SE_TLP_START",
+   "slot98": "WD_VOI_LOC_SYS_START",
+   "idleSec": 0.5,
+   "jingle": null
+  },
+  "2": {
+   "type": 2,
+   "layout": "sys_tlp_finish.bflyt",
+   "se": "SQ_SE_TLP_FINISH",
+   "voice": "WD_VOI_LOC_SYS_FINISH",
+   "message": "hsmg_tlp_finish",
+   "anim": null,
+   "inout": 0,
+   "slot90": "SQ_SE_TLP_FINISH",
+   "slot98": "WD_VOI_LOC_SYS_FINISH",
+   "idleSec": 1.0,
+   "jingle": null
+  },
+  "5": {
+   "type": 5,
+   "layout": "sys_tlp_win_00.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": null,
+   "inout": 0,
+   "slot90": "WD_VOI_LOC_SYS_WINNER",
+   "slot98": "",
+   "idleSec": -1.0,
+   "jingle": "SM_JIN_MG_WIN"
+  },
+  "6": {
+   "type": 6,
+   "layout": "sys_tlp_draw_00.bflyt",
+   "se": null,
+   "voice": "WD_VOI_LOC_SYS_DRAW",
+   "message": "hsmg_tlp_draw",
+   "anim": null,
+   "inout": 0,
+   "slot90": "",
+   "slot98": "WD_VOI_LOC_SYS_DRAW",
+   "idleSec": -1.0,
+   "jingle": "SM_JIN_MG_DRAW"
+  }
+ },
+ "telopTable": [
+  {
+   "type": 0,
+   "layout": "sys_tlp_start.bflyt",
+   "se": "SQ_SE_TLP_START",
+   "voice": "WD_VOI_LOC_SYS_START",
+   "message": "hsmg_tlp_start",
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 1,
+   "layout": "sys_321go.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": "count",
+   "inout": 0
+  },
+  {
+   "type": 2,
+   "layout": "sys_tlp_finish.bflyt",
+   "se": "SQ_SE_TLP_FINISH",
+   "voice": "WD_VOI_LOC_SYS_FINISH",
+   "message": "hsmg_tlp_finish",
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 3,
+   "layout": "sys_tlp_round.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": null,
+   "inout": 1
+  },
+  {
+   "type": 4,
+   "layout": "sys_tlp_round_n.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": null,
+   "inout": 1
+  },
+  {
+   "type": 5,
+   "layout": "sys_tlp_win_00.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 6,
+   "layout": "sys_tlp_draw_00.bflyt",
+   "se": null,
+   "voice": "WD_VOI_LOC_SYS_DRAW",
+   "message": "hsmg_tlp_draw",
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 7,
+   "layout": "sys_tlp_newrecord_00.bflyt",
+   "se": null,
+   "voice": "WD_VOI_LOC_SYS_NEWRECORD",
+   "message": "hsmg_tlp_newrecord",
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 8,
+   "layout": "sys_tlp_newrecord_01.bflyt",
+   "se": null,
+   "voice": "WD_VOI_LOC_SYS_NEWRECORD",
+   "message": "hsmg_tlp_newrecord_alone",
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 9,
+   "layout": "sys_tlp_free_00.bflyt",
+   "se": null,
+   "voice": null,
+   "message": null,
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 10,
+   "layout": "sys_tlp_miss.bflyt",
+   "se": "SM_JIN_MG_DRAW",
+   "voice": "WD_VOI_LOC_SYS_MISS",
+   "message": null,
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 11,
+   "layout": "sys_tlp_gotitem.bflyt",
+   "se": "SM_JIN_MG_WIN",
+   "voice": "WD_VOI_LOC_SYS_GOTITEM",
+   "message": null,
+   "anim": null,
+   "inout": 0
+  },
+  {
+   "type": 12,
+   "layout": "sys_tlp_perfect_00.bflyt",
+   "se": null,
+   "voice": null,
+   "message": "hsmg_tlp_perfect",
+   "anim": null,
+   "inout": 0
+  }
+ ],
+ "voiceLocale": {
+  "locale": "koKR",
+  "archive": "subarc_sysvoi_kokr",
+  "suffix": "KOKR"
+ },
+ "whistle": {
+  "label": "SQ_SE_SYS_WHISTLE",
+  "entryType": 0
+ },
+ "setting": {
+  "inst_bgm_label": {
+   "value": "SM_BGM_MG_INST",
+   "fromDefault": true
+  },
+  "op_jingle_label": {
+   "value": "",
+   "fromDefault": false
+  },
+  "op_jingle_play_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "mg_bgm_play_position": {
+   "value": "scene_start",
+   "fromDefault": false
+  },
+  "mg_bgm_label": {
+   "value": "SM_BGM_HSMG103_402_702_810_JMP",
+   "fromDefault": false
+  },
+  "mg_bgm_label_no_intro": {
+   "value": "SM_BGM_HSMG103_402_702_810_JMP",
+   "fromDefault": false
+  },
+  "mg_bgm_intro_skip": {
+   "value": "REG_SEQ_MAIN",
+   "fromDefault": false
+  },
+  "mg_bgm_play_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "mg_bgm_stop_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "mg_bgm_stop_fade": {
+   "value": "FADE_TIME_02",
+   "fromDefault": true
+  },
+  "result_jingle_play_position": {
+   "value": "telop",
+   "fromDefault": true
+  },
+  "result_jingle_play_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "result_cheer_play_position": {
+   "value": "",
+   "fromDefault": false
+  },
+  "result_cheer_play_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "result_gaya_play_position": {
+   "value": "",
+   "fromDefault": false
+  },
+  "result_gaya_play_offset": {
+   "value": "0",
+   "fromDefault": true
+  },
+  "camera_split_settingpreset": {
+   "value": "",
+   "fromDefault": false
+  },
+  "camera_split_se_label": {
+   "value": "",
+   "fromDefault": false
+  },
+  "whistle_entry_type": {
+   "value": "0",
+   "fromDefault": false
+  }
+ }
+}

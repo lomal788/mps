@@ -13,6 +13,7 @@
  *   - 물 반사(ice_rev, render_reflection·반사 뒤집기 y −33)는 그리지 않는다(생략).
  *   - 눈 자국 높이장(hsmg402_fluid: 512², 19×19, 깊이 0.3)은 fluid.ts(SnowFluid)가 원본 판독 식으로 굴리고, 지면 fld_snow_fluid_mt 가
  *     material.ts MPS_FLUID 로 읽는다(정점 변위·노멀·최종 곱). 재질 변환 전에 높이장을 만들어야 지면 재질에 훅이 걸린다(docs/minigame/hsmg402.md 7.5).
+ *     그림자 맵에도 같은 변위·앞면을 쓴다(customDepthMaterial = 재질 userData.mpsDepth) — 홈 벽이 홈 바닥에 그늘을 드리운다 [판독 p385 + 추정 컬링].
  */
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -106,6 +107,8 @@ export class ModelInst {
       const opt = fresOf(m).shader?.options ?? {};
       mesh.castShadow = (opts.castShadow ?? true) && ri.cast_shadow?.[0] === 1;
       mesh.receiveShadow = opt.receive_shadow === '1';
+      const depth = m.userData.mpsDepth as THREE.Material | undefined;
+      if (depth && mesh.castShadow) mesh.customDepthMaterial = depth;
       mesh.frustumCulled = false;
     });
     for (const h of hide) h.visible = false;
@@ -150,7 +153,10 @@ export class ModelInst {
 
   dispose(): void {
     this.mixer?.stopAllAction();
-    for (const m of this.ownMaterials) (ctlOf(m) ?? m).dispose();
+    for (const m of this.ownMaterials) {
+      (m.userData.mpsDepth as THREE.Material | undefined)?.dispose();
+      (ctlOf(m) ?? m).dispose();
+    }
     for (const t of this.ownTextures) t.dispose();
   }
 }

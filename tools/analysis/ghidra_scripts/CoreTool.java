@@ -29,6 +29,7 @@ import java.util.Set;
  *   srch:A-B:IMM       [A,B) 명령 중 피연산자 문자열에 IMM 이 들어간 것
  *   vtdec:ADDR:N[:D]   vtable ADDR 의 포인터 N 개가 가리키는 함수 디컴파일(-readOnly 라 새 함수는 저장 안 됨)
  *   vtgot:GOT:N[:D]    GOT 칸이 가리키는 값 + 0x10 을 vtable 시작으로 보고 vtdec
+ *   fdec:ADDR[:DEPTH]  ADDR 에 함수가 없으면 만들어(-readOnly 라 저장 안 됨) dec
  */
 public class CoreTool extends GhidraScript {
     private DecompInterface ifc;
@@ -100,6 +101,18 @@ public class CoreTool extends GhidraScript {
                             if (f == null) { w.println("// no function at " + p[1]); break; }
                             done.remove(f);
                             decomp(f, d, "dec");
+                            break;
+                        }
+                        case "fdec": {
+                            int d = p.length > 2 ? Integer.parseInt(p[2]) : 0;
+                            Function f = getFunctionContaining(a(p[1]));
+                            if (f == null) {
+                                disassemble(a(p[1]));
+                                try { f = createFunction(a(p[1]), null); } catch (Exception ex) { f = null; }
+                            }
+                            if (f == null) { w.println("// cannot create function at " + p[1]); break; }
+                            done.remove(f);
+                            decomp(f, d, "fdec");
                             break;
                         }
                         case "range": {

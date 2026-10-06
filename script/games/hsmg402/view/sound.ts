@@ -18,10 +18,15 @@
  *     [추정]. 위치 = 카메라 + 오프셋 앞 세 칸. 출력 리스너가 둘이라 calc3d 규칙대로 팬은 0, 볼륨은 최댓값(무대 안은 1).
  *   - 같은 플레이어(PLY_*) 동시 재생 한도를 넘으면 가장 오래된 것을 멈춘다 [추정: nn::atk 공개 동작, 우선순위 비교는 생략].
  *   - 보이스의 USER_PROC_RANDOM_VOICE(userproc)는 seq.ts 가 처리하지 않아 변형 하나(L14 = 1)만 난다 [근사].
- *   - BGM 정지 = FINISH(단계 10 진입) 때 [추정], 페이드 길이 FADE_TIME_02 값 미판독 → 0.5 초 [근사].
- *   - 결과 징글 = 텔롭 Start 때(result_jingle_play_position 'telop', ;default 행 [추정]). 승자 텔롭(type 5) SM_JIN_MG_WIN, 무승부(type 6) SM_JIN_MG_DRAW.
+ *   - 공용 흐름 텔롭 소리(assets/hsmg402/sound_sys/sys.json, web/tools/analysis/hsmg402_sys_sound_assets.py) [판독+데이터, docs 7.7.1]:
+ *     UIMGTelop::Start 가 SE 칸(+0x90)·음성 칸(+0x98)을 2D 로 낸다. START(type 0, 기반 SetupGame) = SQ_SE_TLP_START(PLY_SE_DUMMY 볼륨 0)
+ *     + WD_VOI_LOC_SYS_START, FINISH(type 2) = SQ_SE_TLP_FINISH + WD_VOI_LOC_SYS_FINISH, 승자(type 5) = 승자 1명 이하 WD_VOI_LOC_SYS_WINNER /
+ *     2명 이상 WINNERS(SetPlayers), 무승부(type 6) = WD_VOI_LOC_SYS_DRAW. type 5·6 은 이어서 결과 징글 SM_JIN_MG_WIN / SM_JIN_MG_DRAW
+ *     (MGSound FUN_710004cf78, result_jingle_play_position 'telop'·지연 0 — ;default 행). 음성은 로캘 koKR 판(_KOKR, 프리셋 global 'v').
+ *     START 텔롭이 끝나면 whistle_entry_type 0 → SQ_SE_SYS_WHISTLE(그다음 프레임에 단계 8).
+ *   - BGM 정지 = FINISH 텔롭 Start 와 같은 프레임(FUN_710004cf08, mg_bgm_stop_offset 0) [판독+데이터]. 페이드 FADE_TIME_02 값 미판독 → 0.5 초 [근사].
  *   - 환경음은 장면 시작부터 원점 3D 로 [추정: 프리셋 e/a 레코드, 재생 위치 미판독]. 사운드 공간 이펙트(EFFECT_SND_SP_HSMG_MTN)는 없다.
- *   - 시작 텔롭·카운트다운·FINISH 의 시스템 SE·보이스는 main 흐름(미판독)이라 내지 않는다.
+ *   - FINISH 때 main 이 Sound::StopBatch_Type(7, 1) 로 끊는 묶음(그룹 7)의 대상은 미판독이라 웹은 따로 끊지 않는다 [미확정].
  */
 import type * as THREE from 'three';
 import type { V3 } from '../../../core/fmath';
@@ -43,6 +48,13 @@ export interface SoundManifest {
   listener3d: { preset: { index: number; offset: number[]; interiorSize: number; maxVolumeDistance: number; unitDistance: number }[] };
   bgm: { label: string; regions: Record<string, { startSec: number; endSec: number }> };
   effects: { seTriggers: Record<string, string[]> };
+}
+
+/** sound_sys/sys.json — 공용 흐름 텔롭(UIMGTelop 표 0x71014ab280)·호루라기 */
+interface SysSoundJson {
+  sounds: Record<string, Entry>;
+  telop: Record<string, { slot90: string; slot98: string; jingle: string | null }>;
+  whistle: { label: string; entryType: number };
 }
 
 interface Handle {
@@ -69,6 +81,7 @@ export class Hsmg402Sound {
   private readonly loops = new Map<string, Handle>();
   private bgm: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   private camera: THREE.Camera | null = null;
+  private sys: SysSoundJson | null = null;
 
   constructor(
     private readonly assets: Assets,
@@ -79,6 +92,12 @@ export class Hsmg402Sound {
     this.m = man;
     const a = this.audio;
     if (!a) return;
+    try {
+      this.sys = await this.assets.json<SysSoundJson>('sound_sys/sys.json');
+      this.m = man = { ...man, sounds: { ...man.sounds, ...this.sys.sounds } };
+    } catch (e) {
+      console.warn('공용 흐름 소리(sound_sys)를 읽지 못했다', e);
+    }
     this.engine = new SeqEngine(a, { get: (i) => this.g[i], set: (i, v) => (this.g[i] = v) });
     const files = new Set<string>();
     for (const e of Object.values(man.sounds)) {
@@ -223,6 +242,25 @@ export class Hsmg402Sound {
     if (h.seq) h.seq.local[15] = t;
   }
 
+  /**
+   * 텔롭 Start 소리(UIMGTelop::Start): SE 칸 → 음성 칸 → (type 5·6) 결과 징글. type 0 START, 2 FINISH, 5 승자, 6 무승부.
+   * type 5 의 SE 칸은 SetPlayers 가 승자 수로 고른다(2명 이상 WINNERS, 그 밖 WINNER).
+   */
+  telop(type: 0 | 2 | 5 | 6, players: readonly number[] = []): void {
+    const t = this.sys?.telop[String(type)];
+    if (!t) return;
+    const s90 = type === 5 ? (players.length >= 2 ? 'WD_VOI_LOC_SYS_WINNERS' : 'WD_VOI_LOC_SYS_WINNER') : t.slot90;
+    if (s90) this.play(s90);
+    if (t.slot98) this.play(t.slot98);
+    if (t.jingle) this.play(t.jingle);
+  }
+
+  /** START 텔롭 끝(MGSound FUN_710004d528(0)): whistle_entry_type 0 일 때만 */
+  whistle(entryType: number): void {
+    const w = this.sys?.whistle;
+    if (w && w.entryType === entryType) this.play(w.label);
+  }
+
   /** BGM: INTRO 부터, MAIN 리전 반복 */
   startBgm(): void {
     const a = this.audio;
@@ -294,6 +332,7 @@ export class Hsmg402Sound {
     this.loops.clear();
     this.bufs.clear();
     this.seqBufs.clear();
+    this.sys = null;
   }
 }
 

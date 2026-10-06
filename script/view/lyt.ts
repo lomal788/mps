@@ -10,13 +10,20 @@
  * 근사(원본 셰이더·컴바이너 미판독):
  *   - 재질 색 = black + (white − black) × 텍스처(채널마다), × 정점색 × 누적 알파 [추정: ui2d 기본 컴바이너]. 감마 공간에서 섞는다.
  *   - TEV 단계가 있는 재질(텍스처 2장)은 두 텍스처를 곱한다 [근사].
+ *   - 텍스처 좌표 생성 source 4(페인 기준 평행 투영)는 projUv 식으로 만든다 [추정: 원본 캡처 얼굴과 대조해 고른 식]. 그 밖 source 는 정점 UV.
+ *   - 자식 부모 기준점 = 부모 원점 ±크기/2(부모 origin 과 무관) [데이터: anchorOf 주석].
  *   - 텍스처 SRT = nw4r CalcTextureMtx 꼴(가운데 0.5 기준 회전·배율 + 이동) [추정].
  *   - 창(wnd1)은 windowFlags bit0(한 재질로 전부)일 때 프레임 재질 텍스처를 모서리(뒤집기)·변(clamp 늘림)·내용(clamp)으로 9칸 그린다 [근사].
  *   - 글자: 비트맵(FFNT) 배율 = fontSize / (FINF 폭, 높이) [추정: nn::font SetFontSize 규칙], 기준선 = 줄 위 + ascent, 글자 색 =
  *     black→white 를 커버리지로 보간, 위·아래 색 그라데이션은 글자마다. OTF 는 기준 크기(bfcpx)와 hhea 높이로 배율 [추정].
  *     한 줄만, 자동 축소·글자별 변환·그림자(txtFlags) 없음.
  *   - 부품(prt1): layoutFile 레이아웃을 자식 인스턴스로 만들어 그 페인 자리에 그린다(부품 루트를 부품 페인 가운데에 붙인다). 페인 애니를 부품 페인에
- *     걸면 부품 레이아웃 자신의 애니(<부품>_<태그>)를 재생한다 [추정: ui2d 부품 애니 규칙]. 속성 덮어쓰기(properties)는 다루지 않는다.
+ *     걸면 부품 레이아웃 자신의 애니(<부품>_<태그>)를 재생한다 [추정: ui2d 부품 애니 규칙].
+ *     속성 덮어쓰기(properties): 기본 정보(basicInfo)는 basicUsage 비트 8 이동·16 크기·32 배율·64 회전만 부품 안 페인 초기값에 쓴다
+ *     [데이터: hs_system 전수에서 값이 있는 칸과 비트가 1:1, 비트 1·2·4 의미 미판독]. 글자 덮어쓰기(txt1)는 정렬(textAlign)만 쓴다
+ *     [추정: usage 비트 미판독, hsmg402 이름판 오른쪽 정렬이 원본 캡처와 맞음].
+ *   - 시스템 공유 글꼴(nintendo_udsg 등, 게임 데이터에 없음)은 sysFonts 의 CSS 글꼴로 캔버스에 그린다 [근사: 원본 글리프 아님],
+ *     글자 크기 = fontSize.x px, 줄 높이 = fontSize.y.
  *   - 마스크(페인 시스템 데이터 형식 3, tools/mg1801_web_ui.py pane_masks): 마스크 텍스처 알파를 SRT·랩대로 곱한다 [추정: ui2d 마스크 합성].
  *   - FLCT·FLIM·사용자 데이터 애니, 정렬(ali1)·스크롤(scr1) 페인은 다루지 않는다.
  */
@@ -45,6 +52,10 @@ export interface LytMaterial {
   white: string;
   texMaps: LytTexMap[];
   texSrt: LytSrt[];
+  /** 텍스처 좌표 생성(맵 순서). source 0~2 = 정점 UV, 4 = 페인 기준 평행 투영 */
+  texCoordGen?: { source: number }[];
+  /** 투영 좌표 생성 값(투영 생성 순서) */
+  projTexGen?: { pos: number[]; scale: number[]; flags: number }[];
   tev: { color: number; alpha: number }[];
 }
 
@@ -77,6 +88,8 @@ export interface LytPane {
   frames?: { material: string; flip: number }[];
   /** 부품(prt1) 레이아웃 이름 */
   layoutFile?: string;
+  /** 부품(prt1) 속성 덮어쓰기(tools/analysis/ui_lyt.py read_prt) */
+  properties?: { name: string; basicUsage: number; basicInfo?: { translate: number[]; rotate: number[]; scale: number[]; size: number[] }; overrideData?: LytPane }[];
   /** 마스크 텍스처(페인 시스템 데이터) */
   mask?: { tex: string; wrapU: string; wrapV: string; srt: LytSrt };
 }
@@ -191,6 +204,8 @@ class PaneState {
   visible: boolean;
   /** 정점색 TL, TR, BL, BR. 글자 페인은 0 = 위 색, 2 = 아래 색, 창은 내용 정점색 */
   vtx: Rgba[];
+  /** 글자 정렬(부품 속성 덮어쓰기가 있으면 그 값) */
+  align: { x: string; y: string } | undefined;
   children: PaneState[] = [];
 
   constructor(readonly src: LytPane) {
@@ -202,6 +217,7 @@ class PaneState {
     this.visible = src.visible;
     const c = src.type === 'txt1' ? [src.colorTop!, src.colorTop!, src.colorBottom!, src.colorBottom!] : src.type === 'wnd1' ? src.content!.vtxColors : (src.vtxColors ?? ['#ffffffff', '#ffffffff', '#ffffffff', '#ffffffff']);
     this.vtx = c.map(hex);
+    this.align = src.textAlign;
   }
 }
 
@@ -255,6 +271,18 @@ export class LayoutInstance {
       if (sub) {
         const part = new LayoutInstance(sub.lyt, sub.anims, resolve);
         part.visible = true;
+        for (const pr of p.properties ?? []) {
+          const ps = part.panes.get(pr.name);
+          if (!ps) continue;
+          const bi = pr.basicInfo;
+          if (bi) {
+            if (pr.basicUsage & 8) ps.t = [...bi.translate];
+            if (pr.basicUsage & 16) ps.size = [...bi.size];
+            if (pr.basicUsage & 32) ps.s = [...bi.scale];
+            if (pr.basicUsage & 64) ps.r = [...bi.rotate];
+          }
+          if (pr.overrideData?.type === 'txt1' && pr.overrideData.textAlign) ps.align = pr.overrideData.textAlign;
+        }
         this.parts.set(p.name, part);
       }
       return s;
@@ -432,19 +460,27 @@ function rectOf(origin: [string, string], w: number, h: number): [number, number
   return [x0, y1 - h, x0 + w, y1];
 }
 
+/**
+ * 자식의 부모 기준점(parentOrigin) = 부모 페인 원점에서 ±크기/2 — 부모 자신의 원점(origin)과 무관하다
+ * [데이터: sys_mgstat_03 namebase(origin 왼쪽) 자식 pict_04(50)·pict_02(150)가 이 규칙에서만 0~100·100~200·200~260 으로 이어지고, 원본 캡처의 이름판이 이어진 그라데이션].
+ */
 function anchorOf(parent: PaneState | null, child: LytPane): [number, number] {
   if (!parent) return [0, 0];
-  const [l, b, r, t] = rectOf(parent.src.origin, parent.size[0], parent.size[1]);
+  const w = parent.size[0];
+  const h = parent.size[1];
   const [px, py] = child.parentOrigin;
-  return [px === 'left' ? l : px === 'right' ? r : (l + r) / 2, py === 'top' ? t : py === 'bottom' ? b : (b + t) / 2];
+  return [px === 'left' ? -w / 2 : px === 'right' ? w / 2 : 0, py === 'top' ? h / 2 : py === 'bottom' ? -h / 2 : 0];
 }
 
 const VERT = `
 attribute vec4 vcol;
+attribute vec2 uvp;
 varying vec2 vUv;
+varying vec2 vUvP;
 varying vec4 vCol;
 void main() {
   vUv = uv;
+  vUvP = uvp;
   vCol = vcol;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
@@ -454,6 +490,8 @@ uniform sampler2D map0;
 uniform sampler2D map1;
 uniform int texCount;
 uniform int alphaMix;
+uniform int gen0;
+uniform int gen1;
 uniform vec4 black;
 uniform vec4 white;
 uniform mat3 srt0;
@@ -463,11 +501,12 @@ uniform sampler2D maskMap;
 uniform int maskOn;
 uniform mat3 srtMask;
 varying vec2 vUv;
+varying vec2 vUvP;
 varying vec4 vCol;
 void main() {
   vec4 t = vec4(1.0);
-  if (texCount > 0) t = texture2D(map0, (srt0 * vec3(vUv, 1.0)).xy);
-  if (texCount > 1) t *= texture2D(map1, (srt1 * vec3(vUv, 1.0)).xy);
+  if (texCount > 0) t = texture2D(map0, (srt0 * vec3(gen0 == 1 ? vUvP : vUv, 1.0)).xy);
+  if (texCount > 1) t *= texture2D(map1, (srt1 * vec3(gen1 == 1 ? vUvP : vUv, 1.0)).xy);
   vec4 c = alphaMix == 1 ? mix(black, white, t.a) : mix(black, white, t);
   c *= vCol;
   if (maskOn == 1) c.a *= texture2D(maskMap, (srtMask * vec3(vUv, 1.0)).xy).a;
@@ -479,6 +518,7 @@ interface Quad {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   pos: Float32Array;
   uv: Float32Array;
+  uvp: Float32Array;
   col: Float32Array;
 }
 
@@ -487,6 +527,21 @@ const WRAP: Record<string, THREE.Wrapping> = {
   repeat: THREE.RepeatWrapping,
   mirror: THREE.MirroredRepeatWrapping,
 };
+
+/** 페인 기준 평행 투영 좌표(정점마다 u, v) — LytRenderer.projUv 설명 참고 */
+export function projTexCoords(local: [number, number][], texW: number, texH: number, pj?: { pos: number[]; scale: number[] }): number[] {
+  const tw = texW * (pj?.scale[0] ?? 1);
+  const th = texH * (pj?.scale[1] ?? 1);
+  const px = pj?.pos[0] ?? 0;
+  const py = pj?.pos[1] ?? 0;
+  return local.flatMap(([x, y]) => [(x - px) / tw + 0.5, -(y - py) / th + 0.5]);
+}
+
+/** uv' = R·S·(uv − 0.5) + 0.5 + t (srtMat 과 같은 식, 검사용) */
+export function applySrt(s: LytSrt | undefined, u: number, v: number): [number, number] {
+  const m = srtMat(s).elements;
+  return [m[0] * u + m[3] * v + m[6], m[1] * u + m[4] * v + m[7]];
+}
 
 /** nw4r CalcTextureMtx 꼴 [추정]: uv' = R·S·(uv − 0.5) + 0.5 + t */
 function srtMat(s: LytSrt | undefined): THREE.Matrix3 {
@@ -509,6 +564,8 @@ export interface LytResources {
   /** fcpx 패밀리 → 아틀라스 메트릭·그림 */
   fonts: Map<string, { meta: LytFontAtlas; image: TexImageSource }>;
   telop: LytTelopFont | null;
+  /** 게임 데이터에 없는 시스템 공유 글꼴 패밀리 → CSS 글꼴 목록 [근사] */
+  sysFonts?: Record<string, string>;
 }
 
 type TexImageSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
@@ -566,9 +623,11 @@ export class LytRenderer {
       const g = new THREE.BufferGeometry();
       const pos = new Float32Array(12);
       const uv = new Float32Array(8);
+      const uvp = new Float32Array(8);
       const col = new Float32Array(16);
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      g.setAttribute('uvp', new THREE.BufferAttribute(uvp, 2));
       g.setAttribute('vcol', new THREE.BufferAttribute(col, 4));
       g.setIndex([0, 2, 1, 1, 2, 3]);
       const m = new THREE.ShaderMaterial({
@@ -579,6 +638,8 @@ export class LytRenderer {
           map1: { value: this.white },
           texCount: { value: 0 },
           alphaMix: { value: 0 },
+          gen0: { value: 0 },
+          gen1: { value: 0 },
           black: { value: new THREE.Vector4() },
           white: { value: new THREE.Vector4(1, 1, 1, 1) },
           srt0: { value: new THREE.Matrix3() },
@@ -601,7 +662,7 @@ export class LytRenderer {
       const mesh = new THREE.Mesh(g, m);
       mesh.frustumCulled = false;
       this.scene.add(mesh);
-      q = { mesh, pos, uv, col };
+      q = { mesh, pos, uv, uvp, col };
       this.quads.push(q);
     }
     q.mesh.visible = true;
@@ -611,7 +672,30 @@ export class LytRenderer {
   }
 
   /** 사각형 하나: 네 점(TL, TR, BL, BR)·UV·정점색 */
-  private emit(corners: [number, number][], uvs: number[], vtx: Rgba[], mat: MatState | null, alpha: number, alphaMix: boolean, tex0?: THREE.Texture, mask?: LytPane['mask']): void {
+  /**
+   * 페인 기준 평행 투영(texCoordGen source 4) 좌표 — 페인 사각형 가운데 기준 정점 위치(local, y 위 +)를 그 맵 텍스처의 픽셀 크기 × 투영 배율로 나눈다:
+   * u = (x − pos.x)/(texW·scale.x) + 0.5, v = −(y − pos.y)/(texH·scale.y) + 0.5, 그 뒤 맵의 texSrt [추정: 해석 후보 6개 중 원본 캡처 얼굴과 오차 최소(0.10 vs 0.17~0.31)].
+   * 맞춤 플래그(레이아웃·페인 크기 맞춤)·회전 보정은 다루지 않는다. 투영 맵이 둘이면 첫 번째 크기로 함께 쓴다 [근사].
+   */
+  private projUv(mat: MatState | null, local: [number, number][] | undefined): { gen: [number, number]; uvp: number[] } | null {
+    const gens = mat?.src.texCoordGen;
+    if (!mat || !gens || !local) return null;
+    const gen: [number, number] = [0, 0];
+    let uvp: number[] | null = null;
+    let k = 0;
+    for (let i = 0; i < Math.min(2, gens.length); i++) {
+      if (gens[i].source < 3) continue;
+      const pj = mat.src.projTexGen?.[k++];
+      if (gens[i].source !== 4 || i >= mat.tex.length) continue;
+      gen[i] = 1;
+      if (uvp) continue;
+      const img = this.res.images.get(mat.tex[i]);
+      uvp = projTexCoords(local, img?.width ?? 1, img?.height ?? 1, pj);
+    }
+    return uvp ? { gen, uvp } : null;
+  }
+
+  private emit(corners: [number, number][], uvs: number[], vtx: Rgba[], mat: MatState | null, alpha: number, alphaMix: boolean, tex0?: THREE.Texture, mask?: LytPane['mask'], local?: [number, number][]): void {
     const q = this.quad();
     for (let i = 0; i < 4; i++) {
       q.pos[i * 3] = corners[i][0];
@@ -622,8 +706,12 @@ export class LytRenderer {
       for (let k = 0; k < 4; k++) q.col[i * 4 + k] = vtx[i][k] / 255;
     }
     const g = q.mesh.geometry;
-    for (const a of ['position', 'uv', 'vcol']) (g.getAttribute(a) as THREE.BufferAttribute).needsUpdate = true;
+    const pr = tex0 ? null : this.projUv(mat, local);
+    if (pr) q.uvp.set(pr.uvp);
+    for (const a of ['position', 'uv', 'uvp', 'vcol']) (g.getAttribute(a) as THREE.BufferAttribute).needsUpdate = true;
     const u = q.mesh.material.uniforms;
+    u.gen0.value = pr ? pr.gen[0] : 0;
+    u.gen1.value = pr ? pr.gen[1] : 0;
     const black = mat?.black ?? [0, 0, 0, 0];
     const white = mat?.white ?? [255, 255, 255, 255];
     (u.black.value as THREE.Vector4).set(black[0] / 255, black[1] / 255, black[2] / 255, black[3] / 255);
@@ -694,7 +782,15 @@ export class LytRenderer {
   private picture(inst: LayoutInstance, p: PaneState, m: Mat3, [l, b, r, t]: number[], alpha: number): void {
     const mat = inst.mats.get(p.src.material ?? '') ?? null;
     const uv = p.src.uvs?.[0] ?? [0, 0, 1, 0, 0, 1, 1, 1];
-    this.emit(this.corners(m, l, b, r, t), uv, p.vtx, mat, alpha, false, undefined, p.src.mask);
+    const cx = (l + r) / 2;
+    const cy = (b + t) / 2;
+    const local: [number, number][] = [
+      [l - cx, t - cy],
+      [r - cx, t - cy],
+      [l - cx, b - cy],
+      [r - cx, b - cy],
+    ];
+    this.emit(this.corners(m, l, b, r, t), uv, p.vtx, mat, alpha, false, undefined, p.src.mask, local);
   }
 
   /** 창: windowFlags bit0 이면 프레임 재질 하나로 9칸 [근사], 아니면 내용만 */
@@ -744,7 +840,7 @@ export class LytRenderer {
     const fam = (p.src.font ?? '').replace(/\.fcpx$/, '');
     const mat = inst.mats.get(p.src.material ?? '') ?? null;
     const fs = p.src.fontSize!;
-    const align = p.src.textAlign ?? { x: 'center', y: 'center' };
+    const align = p.align ?? { x: 'center', y: 'center' };
     const top = p.vtx[0];
     const bottom = p.vtx[2];
     const place = (lineW: number, lineH: number): [number, number] => {
@@ -760,6 +856,15 @@ export class LytRenderer {
       if (!img) return;
       const [x0, yTop] = place(img.w, img.h);
       this.emit(this.corners(m, x0, yTop - img.h, x0 + img.w, yTop), [0, 0, 1, 0, 0, 1, 1, 1], [top, top, bottom, bottom], mat, alpha, true, img.tex);
+      return;
+    }
+    const sys = this.res.sysFonts?.[fam];
+    if (sys && !this.res.fonts.has(fam)) {
+      const img = this.sysImage(str, sys, fs[0]);
+      if (!img) return;
+      const [x0, yTop] = place(img.w, fs[1]);
+      const y0 = yTop - (fs[1] - img.h) / 2;
+      this.emit(this.corners(m, x0, y0 - img.h, x0 + img.w, y0), [0, 0, 1, 0, 0, 1, 1, 1], [top, top, bottom, bottom], mat, alpha, true, img.tex);
       return;
     }
     const f = this.res.fonts.get(fam);
@@ -812,6 +917,34 @@ export class LytRenderer {
     ctx.fillStyle = '#fff';
     ctx.textBaseline = 'alphabetic';
     ctx.setTransform(ratio, 0, 0, 1, 0, 0);
+    ctx.fillText(str, 0, asc);
+    const tex = new THREE.CanvasTexture(c);
+    tex.flipY = false;
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    e = { tex, w: c.width, h: c.height, asc };
+    this.telopCache.set(key, e);
+    return e;
+  }
+
+  /** 시스템 글꼴 대체: CSS 글꼴로 한 줄을 캔버스에 그린다(문자열·크기마다 한 번) [근사] */
+  private sysImage(str: string, css: string, px: number): { tex: THREE.Texture; w: number; h: number; asc: number } | null {
+    const key = `sys|${css}|${str}|${px}`;
+    let e = this.telopCache.get(key);
+    if (e) return e;
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    const font = `${px}px ${css}`;
+    ctx.font = font;
+    const mt = ctx.measureText(str);
+    const asc = Math.ceil(mt.fontBoundingBoxAscent ?? px * 0.88);
+    const desc = Math.ceil(mt.fontBoundingBoxDescent ?? px * 0.12);
+    c.width = Math.max(1, Math.ceil(mt.width));
+    c.height = Math.max(1, asc + desc);
+    ctx.font = font;
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillText(str, 0, asc);
     const tex = new THREE.CanvasTexture(c);
     tex.flipY = false;

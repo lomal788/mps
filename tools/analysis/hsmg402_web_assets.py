@@ -1,6 +1,6 @@
 """hsmg402(데굴데굴 눈덩이) 웹 에셋 — 변환 결과(extracted/converted/…)에서 화면이 쓰는 것만 web/assets 로 옮기고 manifest 를 만든다.
 
-  F:/dev/mps/.venv/Scripts/python web/tools/analysis/hsmg402_web_assets.py [--skip-chara] [--skip-sound] [--skip-ui] [--only-effects] [--only-env]
+  F:/dev/mps/.venv/Scripts/python web/tools/analysis/hsmg402_web_assets.py [--skip-chara] [--skip-sound] [--skip-ui] [--only-effects] [--only-env] [--only-ui]
 
 먼저 할 것(변환): web/tools/analysis/graphics_convert.py mps_hsmg402, mps_pcNN_hsmg402 ×10 (docs/minigame/hsmg402.md 9.8, analysis/notes/hsmg402_assets.md 15절).
 
@@ -92,15 +92,24 @@ LAYOUTS = [
     ("sys_tlp.lyt/blyt", "sys_tlp.lyt/anim", "sys_tlp_win_00", ["in", "normal", "out"]),
     ("sys_tlp.lyt/blyt", "sys_tlp.lyt/anim", "sys_tlp_win_01", ["in", "normal", "out"]),
     ("sys_tlp.lyt/blyt", "sys_tlp.lyt/anim", "sys_tlp_draw_00", ["in", "normal", "out"]),
+    # 네 모서리 플레이어 상태(UIMGStatus TYPE 0xd·PLACE 6 → sys_mgstat_03_00, 부품 sys_mgstat_03 → sys_face_100px)
+    ("blyt", "anim", "sys_mgstat_03_00", []),
+    ("blyt", "anim", "sys_mgstat_03", ["in", "normal", "out", "rank_on"]),
+    ("blyt", "anim", "sys_face_100px", []),
 ]
+# 상태 UI 얼굴: UISharedTexture::GetPCFace → "face_128_pcNN^u"(x_face_pc128) [판독]
+FACE_TEX = [f"face_128_{p.split('_')[0]}^u" for p in PCS]
 FONT_HOLDER = BEA / "font_holder_kr.nx.bea/fonts_kr/holder_layout.lyt"
 FONT_DIRS = [BEA / "Parts_kr.lyt.nx.bea/Parts.lyt/Font", BEA / "Parts.lyt.nx.bea/Parts.lyt/Font"]
 MSG_DIR = EX / "message" / "KRko"
 TEXT_LABELS = ["hsmg402_MGctrlGuide", "hsmg_tlp_start", "hsmg_tlp_finish", "hsmg_tlp_go", "hsmg_tlp_win", "hsmg_tlp_wins",
-               "hsmg_tlp_draw"] + [f"im_{p.split('_')[0]}_name" for p in PCS]
+               "hsmg_tlp_draw"] + [f"im_{p.split('_')[0]}_name" for p in PCS] +               ["im_guest01_name", "im_guest02_name", "im_guest03_name", "hsmg_status_user_name", "hsmg_status_rank_small",
+               "im_rank01", "im_rank02", "im_rank03", "im_rank04"]
 # 패밀리(fcpx) → 그 글자로 그릴 라벨(+ 추가 글자)
 FONT_USE = {
-    "hsfont_middle": (["hsmg402_MGctrlGuide"] + [f"im_{p.split('_')[0]}_name" for p in PCS], ""),
+    # E004~E007 = 버튼 글자(실행 중 E000~E003 위치 아이콘을 바꿔 넣는다, FUN_7100044654), 순위 im_rankNN
+    "hsfont_middle": (["hsmg402_MGctrlGuide", "im_rank01", "im_rank02", "im_rank03", "im_rank04"] +
+                      [f"im_{p.split('_')[0]}_name" for p in PCS], ""),
     "hsfont_mario": (["hsmg_tlp_start", "hsmg_tlp_finish", "hsmg_tlp_go", "hsmg_tlp_win", "hsmg_tlp_wins", "hsmg_tlp_draw"], "0123456789"),
     "hsfont_mario_out": (["hsmg_tlp_start", "hsmg_tlp_finish", "hsmg_tlp_go", "hsmg_tlp_win", "hsmg_tlp_wins", "hsmg_tlp_draw"], "0123456789"),
 }
@@ -750,6 +759,12 @@ def build_ui() -> dict:
             img.save(DST / fn, optimize=True)
             textures[tn] = fn
         print(" ui", name, tags, len(texnames), "tex")
+    for tn in FACE_TEX:
+        img = lt.get(tn)
+        assert img is not None, tn
+        fn = "ui/tex/" + tn.replace("^", "_") + ".png"
+        img.save(DST / fn, optimize=True)
+        textures[tn] = fn
     msgs = load_messages()
     texts = {k: msgs[k] for k in TEXT_LABELS if k in msgs}
     holder = ui_sarc.read_files(str(FONT_HOLDER))
@@ -784,7 +799,13 @@ def main(argv):
     ap.add_argument("--skip-ui", action="store_true")
     ap.add_argument("--only-effects", action="store_true", help="이펙트(effect/·manifest.effects)만 다시 만든다")
     ap.add_argument("--only-env", action="store_true", help="조명·환경·후처리(manifest.env·IBL 큐브·LUT)만 다시 만든다")
+    ap.add_argument("--only-ui", action="store_true", help="2D UI(ui/·manifest.ui)만 다시 만든다")
     a = ap.parse_args(argv)
+    if a.only_ui:
+        ui = build_ui()
+        (DST / "ui/ui.json").write_text(json.dumps(ui, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        print("ui", f"{size_of(DST / 'ui') / 1e6:.2f} MB", len(ui["layouts"]), "layouts", len(ui["textures"]), "textures")
+        return
     if a.only_env:
         man = json.loads((DST / "manifest.json").read_text(encoding="utf-8"))
         man["env"] = build_env()

@@ -9,7 +9,7 @@
  *   VO_HSMG402_CMP_SB·VO_HSMG402_FALL(player) → 캐릭터 base 트리거 해석(SQ_VOI_DS_PCNN_JUMP/FALL), SNOW_FALL00 → 이펙트.
  *   seT → 1회 3D 재생 + L15, seLoop → 루프 핸들(L15 갱신·정지), upCamera → camera.ts, telop → ui.ts + 결과 징글, guide·timer → ui.ts.
  *   캐릭터 모션 ftrg(SNOW_MAKE00·SNOW_BREATH00·VO_*·SE_PC_WALK…·VB_*)는 state 의 motion/motionFrame 을 따라 화면이 낸다(state.ts 약속).
- *   흐름 단계 10(MainEnd) 진입 → BGM 정지 [추정].
+ *   흐름 단계 7 → START 텔롭 소리, 8 → 호루라기, 10(MainEnd) 진입 → FINISH 텔롭 소리 + BGM 정지(sound.ts 머리말).
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -192,7 +192,13 @@ export class Hsmg402View implements GameView<Hsmg402State, Hsmg402Event> {
       this.fx.startField();
     }
     if (state.stage !== this.lastStage) {
-      if (state.stage === 10) this.sound.stopBgm();
+      /* 공용 흐름 텔롭 소리(sound.ts 머리말): 단계 7 START, 단계 8 직전 호루라기, FINISH(웹 단계 10 = ui FINISH 텔롭)와 BGM 정지 같은 프레임 */
+      if (state.stage === 7) this.sound.telop(0);
+      if (state.stage === 8) this.sound.whistle(0);
+      if (state.stage === 10) {
+        this.sound.telop(2);
+        this.sound.stopBgm();
+      }
       this.lastStage = state.stage;
     }
     for (const e of events) this.onEvent(state, e);
@@ -248,8 +254,8 @@ export class Hsmg402View implements GameView<Hsmg402State, Hsmg402Event> {
       case 'telop':
         if (e.op === 'start') {
           this.ui.telopStart(e.type, e.players);
-          /* result_jingle_play_position 'telop'(;default) [추정], 라벨은 프리셋 치환으로 _MP03 */
-          this.sound.play(e.type === 5 ? 'SM_JIN_MG_WIN' : 'SM_JIN_MG_DRAW');
+          /* UIMGTelop::Start: 승자 WINNER(S)/무승부 DRAW 음성 → 결과 징글(result_jingle_play_position 'telop', 프리셋 치환 _MP03) */
+          this.sound.telop(e.type, e.players);
         }
         break;
       case 'guide':

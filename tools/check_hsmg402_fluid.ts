@@ -396,6 +396,44 @@ out.push(`월드→UV: Env+0x3f0 = (${env3f0.map((x) => +x.toFixed(6)).join(', '
   expect(/fadd ftz \$r10 \$r10 \$r4\s+fadd ftz \$r20 \$r20 \$r5[\s\S]{0,80}?fadd ftz \$r24 \$r24 \$r6/.test(fsText), '지면 FS: N + N_유체 합이 보이지 않음');
 }
 
+/* ---------- 지면 깊이 전용 변형 p385(shader_type 1): 그림자 맵에도 변위 ---------- */
+{
+  const text = fs.readFileSync(path.join(SASS, 'hsmg402__forward_plus_custom__p385.vs.txt'), 'utf8');
+  const fsText = fs.readFileSync(path.join(SASS, 'hsmg402__forward_plus_custom__p385.fs.txt'), 'utf8');
+  const T = [2.5, -1.7290286, -3.25];
+  const hf = (u: number, v: number): number => 0.9 * Math.sin(u * 9.3) * Math.cos(v * 4.1) - 0.3;
+  const view: Record<number, number> = { 0x70: 1, 0x84: 1, 0x98: 1, 0xac: 1 };
+  let maxErr = 0;
+  for (let n = 0; n < 500; n++) {
+    const lp = [(rnd() - 0.5) * 18 - 2, 1.925, (rnd() - 0.5) * 18 + 3];
+    const shape: Record<number, number> = { 0x0: 1, 0x4: 0, 0x8: 0, 0xc: T[0], 0x10: 0, 0x14: 1, 0x18: 0, 0x1c: T[1], 0x20: 0, 0x24: 0, 0x28: 1, 0x2c: T[2] };
+    const envb: Record<number, number> = { 0x3f0: env3f0[0], 0x3f4: env3f0[1], 0x3f8: env3f0[2], 0x3fc: env3f0[3], 0x400: P.fluid_world_height, 0x538: 7 };
+    const e = emuEnvy(text, {
+      cb: (t) => {
+        let m = /^Shape\[(0x[0-9a-f]+)\]$/.exec(t);
+        if (m) return shape[parseInt(m[1], 16)] ?? 0;
+        m = /^EnvironmentParamBuffer\[(0x[0-9a-f]+)\]$/.exec(t);
+        if (m) return envb[parseInt(m[1], 16)] ?? 0;
+        m = /^ModelParamBuffer\[(0x[0-9a-f]+)\]$/.exec(t);
+        if (m) return parseInt(m[1], 16) === 0x128 ? 1 : 0;
+        m = /^View\[(0x[0-9a-f]+)\]$/.exec(t);
+        if (m) return view[parseInt(m[1], 16)] ?? 0;
+        if (t === 'Material.backgraoundMode' || t === 'Material.normalDirectionOffsetScale') return 0;
+        throw new Error(`깊이 VS: 상수 ${t}`);
+      },
+      attr: { 'v0.x': lp[0], 'v0.y': lp[1], 'v0.z': lp[2], 'v1.x': 0, 'v1.y': 1, 'v1.z': 0 },
+      tex: (_s, u, v) => [hf(u, v), 0, 0, 0],
+    });
+    const wx = lp[0] + T[0];
+    const wz = lp[2] + T[2];
+    const h = hf((wx - rect[0]) * rect[2], (wz - rect[1]) * rect[3]);
+    maxErr = Math.max(maxErr, Math.abs(e.st['pos.x'] - wx), Math.abs(e.st['pos.y'] - (lp[1] + T[1] + h * P.fluid_world_height)), Math.abs(e.st['pos.z'] - wz), Math.abs(e.st['pos.w'] - 1));
+  }
+  expect(maxErr < 1e-4, `깊이 VS p385 변위 오차 ${maxErr}`);
+  expect(!/\{|tex/.test(fsText.split('\n').slice(1).join('\n')), '깊이 FS p385 가 텍스처를 읽음(깊이 전용 아님)');
+  out.push(`지면 깊이 전용 VS p385(shader_type 1, 원본 에뮬) vs material.ts mpsFluidDepthMaterial(FLUID_VERTEX): 500 표본 최대 오차 ${maxErr.toExponential(2)} — 그림자 맵도 y += h·${P.fluid_world_height}, FS 는 상수 출력`);
+}
+
 /* ---------- 엔진 fluid_normal (반정밀도) ---------- */
 {
   const text = fs.readFileSync(path.join(SASS, 'system_boot__fluid_normal.fs.sass'), 'utf8');
@@ -524,6 +562,22 @@ out.push(`월드→UV: Env+0x3f0 = (${env3f0.map((x) => +x.toFixed(6)).join(', '
       expect(sh.fragmentShader.includes('normalize( texture2D( mpsFluidNormal, vMpsFluidUv ).xyz )'), '지면 FS 노멀 치환 실패');
       expect(sh.fragmentShader.includes('texture2D( mpsTint, vec2( -vMpsFluidH, 0.0 ) )'), '지면 FS 최종 곱 u = −h 치환 실패');
       for (const k of ['mpsFluidHeight', 'mpsFluidNormal', 'mpsFluidRect', 'mpsFluidDepth']) expect(k in sh.uniforms, `지면 uniform 없음 ${k}`);
+      expect(m.shadowSide === m.side && m.side === THREE.FrontSide, `지면 shadowSide ${m.shadowSide} ≠ 재질 면 ${m.side}`);
+      const dm = m.userData.mpsDepth as THREE.MeshDepthMaterial | undefined;
+      expect(!!dm && dm.depthPacking === THREE.RGBADepthPacking, '지면 그림자 깊이 재질 없음/깊이 패킹 다름');
+      if (dm) {
+        const dsh = { uniforms: {} as Record<string, THREE.IUniform>, vertexShader: THREE.ShaderLib.depth.vertexShader, fragmentShader: THREE.ShaderLib.depth.fragmentShader, defines: {} as Record<string, string> };
+        dm.onBeforeCompile(dsh as never, null as never);
+        expect(dsh.vertexShader.indexOf('vMpsFluidH = textureLod') > dsh.vertexShader.indexOf('#include <begin_vertex>'), '깊이 VS 변위가 begin_vertex 뒤가 아님');
+        expect(dsh.vertexShader.indexOf('vMpsFluidH = textureLod') < dsh.vertexShader.indexOf('#include <project_vertex>'), '깊이 VS 변위가 project_vertex 앞이 아님');
+        for (const k of ['mpsFluidHeight', 'mpsFluidRect', 'mpsFluidDepth']) expect(dsh.uniforms[k] === (mpsFluidEnv as unknown as Record<string, THREE.IUniform>)[k.replace('mpsFluid', '').toLowerCase()], `깊이 uniform ${k} 이 mpsFluidEnv 와 다름`);
+        for (const name of new Set(dsh.vertexShader.match(/\bv?[mM]ps[A-Z]\w*/g) ?? [])) {
+          const decl = new RegExp(String.raw`\b((uniform|varying|attribute)\s+\w+|vec4|float)\s+${name}\b`);
+          if (!decl.test(dsh.vertexShader)) errors.push(`깊이 vs 선언 없음 ${name}`);
+        }
+        expect(!/[mM]ps[A-Z]/.test(dsh.fragmentShader), '깊이 FS 에 mps 식별자가 들어감');
+        expect(dm.customProgramCacheKey() !== new THREE.MeshDepthMaterial().customProgramCacheKey(), '깊이 재질 프로그램 캐시 키가 기본과 같음');
+      }
       for (const [stage, s] of [['vs', sh.vertexShader], ['fs', sh.fragmentShader]] as const) {
         for (const name of new Set(s.match(/\bv?[mM]ps[A-Z]\w*/g) ?? [])) {
           const decl = new RegExp(String.raw`\b(uniform|varying|attribute|const|float|vec2|vec3|vec4|mat3|sampler2D|samplerCube)\s+(highp\s+|mediump\s+)?${name}\b`);
@@ -532,7 +586,7 @@ out.push(`월드→UV: Env+0x3f0 = (${env3f0.map((x) => +x.toFixed(6)).join(', '
       }
     }
   });
-  out.push(`지면 재질 훅: fld_snow_fluid_mt 만 MPS_FLUID(정점 변위·노멀 합·최종 곱 u=−h), 선언 검사 포함`);
+  out.push(`지면 재질 훅: fld_snow_fluid_mt 만 MPS_FLUID(정점 변위·노멀 합·최종 곱 u=−h) + 그림자 깊이 재질(같은 변위, shadowSide = 앞면), 선언 검사 포함`);
 }
 
 /* ---------- 참고 계산: 공 한 번 지나간 홈 깊이·복원 시간 ---------- */

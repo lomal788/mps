@@ -1005,7 +1005,12 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
   - 캐릭터 붓(`L/R_footfluid_m` 발 판, `bodyfluid_m` 몸 원판): **h += hgt·w·(w ≥ 1.01 ? 1 : sat(10·이동 거리)·utilityParameter0.x)·utilityParameter1.x(0.5)·M160**, w = 뼈 `NDinput_0` 위치(몸 x, 왼발 y, 오른발 z — 모션 애니가 걷기에서 디딘 발만 1), hgt = BC4_SNORM(발 중심 −0.79, 몸 중심 −0.32·가장자리 +0.28) → 걸으면 발자국 길, 피격·승리(w 3)는 멈춰도 몸 자국 [판독 + 데이터].
   - **`FluidMaterialParamChange(v)` = `SetMaterialUtilityScaleFoot(v)` = 발 붓 재질 utilityParameter0 = v** [판독: main 0x71000ea3c0]. 시작 (0,1,1,1) → 떨어지는 동안 발 자국 없음, 단계 0 에서 착지(y ≤ 0)한 플레이어부터 (1,1,1,1). 몸 붓(Body)은 바꾸지 않는다.
   - **`SetSystemScaleVec(v)`** = Actor+0x330(y 는 +0x324 에도) — `damageActor`/`damageScale` 이 기본 배율(+0x310)에 곱해 모델 배율로 쓴다 [판독: main 0x71000e577c·0x71000e9adc]. 물리 판정에는 쓰지 않는다. 시작 (2,1,2)은 발 붓이 꺼진(utilityParameter0 0) 동안이라 눈 자국에 영향 없음 [판독 + 추정].
-  - 지면 `fld_snow_fluid_mt` 윗면(y 0.196, 정점 간격 0.127 m): **정점 y += h·0.3**, N = normalize(N_면 + n_유체), 색 × fld_sg_alb(−h, 0). 아래 `fld_snow_mt` 면(y 0)이 h < −0.653 에서 홈 바닥이 된다 [판독 + 데이터]. 홈 벽의 청회색 그늘은 램프 확산(N·L)·IBL 이 노멀 변화로 만든다(색 곱 fld_sg_alb 는 거의 한 색).
+  - 지면 `fld_snow_fluid_mt` 윗면(y 0.196, 정점 간격 0.127 m): **정점 y += h·0.3**, N = normalize(N_면 + n_유체), 색 × fld_sg_alb(−h, 0). 아래 `fld_snow_mt` 면(y 0, blendColor 0.76)이 h < −0.653 에서 홈 바닥이 된다 [판독 + 데이터].
+  - **홈 안 청회색 그늘의 주 원인 = 지면 윗면의 자기 그림자** (2026-10-06 fluid-depth 담당):
+    - 그림자 맵에도 변위한 모양이 들어간다 — 이 재질의 동적 옵션 `shader_type` 0~3 변형 = p384~p387(`analysis/mat/prog_st/`). **shader_type 1(p385)은 샘플러 0개·FS 상수 출력인 깊이 전용 변형인데 VS 가 Env+0x538 높이장을 읽어 y += h·Env+0x400 을 한다**(p384 와 같은 변위, 에뮬 대조 오차 7e-7). p386·p387 VS 도 변위한다. nd 셰이더 폴더(`system_boot/kernel/shader/ndrender`)에는 따로 그림자 아카이브가 없다 [판독]. 그림자 패스가 shader_type 1 을 고르는 코드는 미판독(이름표 0x14b7498 → GOT 0x15952e8, 참조 0x710042ef9c 는 옵션 색인 초기화) [추정: 그림자 = 깊이 전용 변형].
+    - 캐스터는 윗면뿐: `cast_shadow` 윗면 1, 아래 `fld_snow_mt` 0 [데이터]. 윗면은 위를 보는 한 겹 판이라 앞면을 그려야만 그림자를 드리운다 → 그림자 패스 컬링 = 재질 face_cull_type(0 = 뒷면 컬링, 앞면 그림) [추정: cast_shadow 1 이 뜻을 갖는 유일한 해석 + 참고 이미지의 홈 안 그늘이 캐릭터 그림자와 같은 색·띠].
+    - 수치(공 배율 1, 프레임 0.1 m, clear 0.2, 카메라에서 보이는 홈 안 표본 평균 sRGB, `web/tools/analysis/hsmg402_fluid_groove_calc.py` → `analysis/hsmg402_fluid_groove_calc.json`) [재구현 계산]: 평지 (146, 220, 242). **원본 식 홈 (90, 132, 181) = 평지 비 (0.62, 0.60, 0.75)**, 보이는 홈 안 표본 100% 그늘(빛 고도 30°·홈 깊이 0.196 → 그늘 길이 0.34 m, 카메라 고도 24.7° 라 보이는 곳은 먼 벽·그 앞 바닥뿐). **고치기 전 웹 (111, 180, 220) = (0.76, 0.82, 0.91)** — 노멀 기울기(램프)·바닥 알베도 0.76·IBL 만 남고 그늘 램프(0,0) 몫이 빠짐. 고친 웹 = 원본 식과 같음. 참고 캡처 홈/평지 (71,121,174)/(131,236,255) = (0.54, 0.51, 0.68) [참고 이미지, 영상 캡처 톤 차이 있음].
+    - 다른 후보는 원본·웹이 같아 대비 차이를 만들지 않는다 [판독 + 재구현 계산]: 유체 노멀(Sobel 배율은 실제 기울기와 같음: S·Sobel/(8A) = 0.3·dh/dz, N_면 과 더해 기울기 각이 반으로 — 원본도 같음, 월드 공간), 높이 RT 하한(−1 자르기 vs 자르지 않음: 홈 평지 비 0.616 vs 0.630 — h < −0.653 은 바닥 밑이라 안 보임), 붓 깊이(Σ ≈ 10·∫fluid0_hgt dx, 속도 무관 → 홈 가운데 −1 도달, 바닥 폭 0.48 m), 정점 밀도(같은 메시), 램프·림·sg_alb(같은 식), AO(_r0.a·_r1.a = 1, 홈 AO 항 없음).
   - [미확정] 높이 RT 형식(웹은 float + [−1,1]), M160 기본값(웹 1), fld_clear 행 방향(웹: png 위 = z −9.5).
   - [참고 이미지: 사용자 제공 원본 캡처] 공이 지나간 자리 = 공 지름 폭 깊은 홈(바닥·벽 청회색, 양 가장자리 밝음), 걸은 자리 = 좁은 홈, 한 판 내내 남음, 직선 경로·끝은 둥글게. 위 판독(붓 형태·Min 복원·133 초)과 맞는다.
 
@@ -1049,6 +1054,21 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 - BGM 리전: INTRO 4마디(각 0.889 s) → MAIN(반복). `intro_skip` = REG_SEQ_MAIN. 재생 위치 `scene_start`. 징글 치환 `SM_JIN_MG_WIN` → `_MP03`, LOSE·DRAW → `SM_JIN_MG_DRAW_MP03`. 환경음 `SQ_AMB_BLZARD_1`.
 - 진동: `bv_vib_hsmg402_snowball_shot`(sb_push00 0f), `bv_vib_hsmg402_snowball_hit_dmg`(피격 모션).
 
+#### 7.7.1 공용 흐름 소리 — START·FINISH·승자/무승부 [판독+데이터, 상세 [../engine/04_sound_flow.md](../engine/04_sound_flow.md)]
+
+| 시점(원본) | 낸 곳 | 소리(2D) | hsmg402 값 |
+|---|---|---|---|
+| 흐름 단계 7 첫 프레임 | 기반 `SetupGame` 의 UIMGTelop type 0 `Start` | `SQ_SE_TLP_START`(PLY_SE_DUMMY 볼륨 0 = 무음) + `WD_VOI_LOC_SYS_START` | 음성 `_KOKR` 0.894 s |
+| START 텔롭 `Finished` 프레임(단계 8 진입 1프레임 전) | MGSound `FUN_710004d528(0)` | `SQ_SE_SYS_WHISTLE` | `whistle_entry_type` = 0 → 남 |
+| 단계 12 첫 프레임 | UIMGTelop type 2 `Start` + `FUN_710004cf08(0)` + `StopBatch_Type(7,1)` | `SQ_SE_TLP_FINISH` + `WD_VOI_LOC_SYS_FINISH`, BGM 정지(`mg_bgm_stop_offset` 0, `FADE_TIME_02`) | 음성 1.064 s |
+| 단계 14 `GameMgr::Result` 단계 2(승자) | GameMgr+0x60 type 5 `SetPlayers`→`Start` | 승자 1명 `WD_VOI_LOC_SYS_WINNER`, 2명 이상 `WD_VOI_LOC_SYS_WINNERS` → `SM_JIN_MG_WIN`(→ `_MP03`) | `result_jingle_play_position` telop·지연 0(;default 행) |
+| 단계 14 결과 단계 10(무승부) | GameMgr+0x68 type 6 `Start` | `WD_VOI_LOC_SYS_DRAW` → `SM_JIN_MG_DRAW`(→ `SM_JIN_MG_DRAW_MP03`) | |
+
+- **정정:** 7.9·11.1 #15 의 "type 5 = 승자, 6 = 무승부 [추정]"은 판독으로 닫혔다(UIMGTelop 표 `@0x71014ab280`: type 5 `sys_tlp_win_00`, 6 `sys_tlp_draw_00`). GameMgr 가 만드는 type 0·2 텔롭은 쓰이지 않고, 화면에 나오는 START·FINISH 는 기반 장면 것이다.
+- 승자 캐릭터 고유 보이스는 텔롭이 아니라 `co_win01a` 모션 ftrg(`VO_PC_ACTION` 17f 등)가 낸다 [데이터] — 웹 motionEvents 경로가 이미 낸다.
+- 웹: `view/sound.ts` `telop(type, players)`·`whistle(0)`, `view/index.ts` 단계 7·8·10 진입과 telop start 사건. 자료 `assets/hsmg402/sound_sys/`(`web/tools/analysis/hsmg402_sys_sound_assets.py`), 검사 `web/tools/check_hsmg402_sound.ts`(131 통과).
+- 웹 시점 차이: 웹 로직은 단계 7 = 180 프레임 고정, 단계 10 = 60 프레임 유지(`Hsmg402Config`), 원본은 단계 7 = START 텔롭 길이(in + normal 0.5 s + out), 단계 10 = 1 프레임, 단계 12 = FINISH out 시작(in + normal 1.0 s) + 대기 `FUN_710004b734` + 텔롭 끝. 소리는 웹 단계 진입(= ui.ts 텔롭 시작)에 맞춘다 [웹 결정].
+
 ### 7.8 캐릭터 모션 [데이터+판독]
 
 | 상태 | 모션(접두 pcNN_) | 프레임 [데이터 추정] | 붙은 이벤트 |
@@ -1067,7 +1087,9 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 ### 7.9 UI [데이터+판독]
 
 - 조작 가이드: `sys_guide_02.bflyt`, 메시지 `hsmg402_MGctrlGuide` "눈덩이 만들기(연타)". 처음 숨김, 경과 10초(601번째 틱) 이후 첫 Update에서 `Out`, `GameFinish`에서도 Out.
-- 타이머: `hs::UITimer(0)` 60초(`sys_timer_00.bflyt` [추정]). 텔롭: `UIMGTelop` type 5(승자)·6(무승부) [추정].
+- 타이머: `hs::UITimer(0)` 60초(`sys_timer_00.bflyt` [추정]). 텔롭: `UIMGTelop` type 5(승자 `sys_tlp_win_00`, 3명 이상 `_01`)·6(무승부 `sys_tlp_draw_00`) [판독: 7.7.1], START·FINISH 는 기반 장면의 type 0·2.
+- **조작 가이드 버튼 글자 [판독]:** 메시지는 U+E003(`hsfont_middle_extension` 의 "버튼 위치" 아이콘 — 웹에서 발바닥처럼 보이던 것)이다. 원본은 글자를 놓기 전에 main `FUN_7100044654` 가 옆으로 쥔 Joy-Con 플레이어가 없으면 E000→E004(A)·E001→E007(Y)·E002→E006(X)·E003→E005(B)로 바꾼다 → 화면은 Ⓑ. 웹 `ui.ts remapButtonGlyphs`, 아틀라스에 E004~E007 추가. 상세 [engine/05_ui.md 6.3](../engine/05_ui.md).
+- **네 모서리 플레이어 상태(UIMGStatus) [판독+데이터]:** NRO 가 아니라 기반 `SceneMiniGameBase::SetupGame` 이 만든다. hs_mgsetting 행 1(hsmg402)이 전부 0 → `UIMGStatus::Create(TYPE 0xd, PLACE 6)` → `sys_mgstat_03_00` 의 `x_stat_00`(좌상)·`01`(우상)·`02`(좌하)·`03`(우하)에 플레이어 ID 오름차순으로 붙는다. 얼굴 `face_128_pcNN^u`(`sys_face_100px` 재질 `x_face_pc128` 의 **맵 1** — 맵 0 은 원 마스크, 맵 1 좌표는 페인 기준 투영 × texSrt 1.3 [추정: 캡처 대조]), 이름 = `GameWork::GetDispPlayerName`(COM = `im_pcNN_name`, 이름 없는 사람 = `im_guest0k_name`), 오른쪽 열은 부품 속성 덮어쓰기로 이름판 배율 (−1,1)·이름 오른쪽 정렬. 연승·통신 아이콘은 오프라인에서 숨김. 표시 시점: **단계 7 첫 프레임**(START 텔롭 `Start` 직후 `MinigameUIControl(0)`) 'in' 10f. 순위: 6.1 의 `EntryPlayerRank`(탈락 프레임)·`SetPlayerRank`(시간 종료, 전원) → `SetRank` → `x_text_01` = "1st"~"4th"(`im_rank01~04`) + 'rank_on' 6f. 숨김: 결과 텔롭 끝 `MinigameUIControl(6)` 'out'(웹 결과 흐름은 그 전에 끝나 쓰지 않음). 얼굴 좌표 (−878, 467)·(877, 467)·(−878, −466)·(877, −466)은 원본 캡처와 1.2 px 이내. 이름판 글꼴은 시스템 공유 글꼴이라 게임 데이터에 없다 → CSS 글꼴 [근사]. 상세·주소 [engine/05_ui.md](../engine/05_ui.md), 검사 `web/tools/check_hsmg402_ui.ts`(128 통과). **정정(조정자 헤드리스 2026-10-06):** 첫 구현은 얼굴을 맵 0 에 넣어 뒤집힌 얼굴 4장이 나왔고, 이름판 조각을 부모 사각형 기준으로 붙여 판이 글자에서 50 px 떨어졌다 → 맵 1·투영 좌표, 부모 기준점 = 부모 원점 ±크기/2 로 고침([engine/05_ui.md 4.4·6.4.1](../engine/05_ui.md)).
 
 ### 7.10 논리 상태와 화면
 
@@ -1093,7 +1115,7 @@ B 간격 [재구현 계산]: 레벨 0·1 11프레임, 레벨 2 8프레임, 레�
 | 하늘 `sky_mt`·`sky_grad_mt`(simple) | out = `_a0` × blendColor, 조명·안개 없음 [판독] | 같게 |
 | 구름 `cloud_mt`(그래프 2978185753) | rgb = aurora_grad02(TEXCOORD_3·srt3)·emissionScale, a = cloud_alb(0·srt0).a·blendColor.a·cloud_mask(1·srt1).a·cloud_mask(2·srt2).a, 조명 없음 [판독 FS 전체] | 같게(state 2 알파 섞기 [추정]) |
 | 배경·빙산 `bg_mt`·`tree_mt`·`ice_mt`(map) | 평행광 없음(`directional_light_off` 1). 확산 = alb·(1−metallic)·base_lmp(TEXCOORD_1).rgb·lightMapScale(1~1.5)·lightmap_color_scale(1) + IBL(확산 × irradianceColorScale = 0~0.25, 반사 × 1) + 빙산 `_e0`(=alb)·emissionScale(0.02~0.1) [판독] | lightMap(HDR)·평행광 끔·IBL 배율·emissive. 디테일 맵·lm.a 가림 생략 |
-| 지면 `fld_snow(_fluid)_mt`(그래프 746197195) | 직접광 = mix(알베도·램프(0,0), 알베도·램프(N·L·0.5+0.5)·광색, 그림자), 확산 IBL = 알베도·(1−F)·(irr(N) + 램프(0.6)·irr(카메라 시선)), 림(rimLightColor × 광색 × (1−N·V)^rimPower × 배율), **출력 × fld_sg_alb(u, 0)** — u = 윗면(p384) −높이장, 가장자리(p768) 정점색 a. 텍스처가 거의 한 색이라 u 와 무관. 거칠기 = min(3면 투영 노이즈, roughness), 윗면(p384, 정점 그래프 2881520328)은 정점 y += h·0.3, N = normalize(N + n_유체)(7.5) [판독] | 직접광·그늘 램프·IBL 두 항(irr 큐브)·림·최종 곱, 윗면 높이장 변위·노멀·u = −h(MPS_FLUID). 노이즈 거칠기 생략 |
+| 지면 `fld_snow(_fluid)_mt`(그래프 746197195) | 직접광 = mix(알베도·램프(0,0), 알베도·램프(N·L·0.5+0.5)·광색, 그림자), 확산 IBL = 알베도·(1−F)·(irr(N) + 램프(0.6)·irr(카메라 시선)), 림(rimLightColor × 광색 × (1−N·V)^rimPower × 배율), **출력 × fld_sg_alb(u, 0)** — u = 윗면(p384) −높이장, 가장자리(p768) 정점색 a. 텍스처가 거의 한 색이라 u 와 무관. 거칠기 = min(3면 투영 노이즈, roughness), 윗면(p384, 정점 그래프 2881520328)은 정점 y += h·0.3, N = normalize(N + n_유체)(7.5) [판독] | 직접광·그늘 램프·IBL 두 항(irr 큐브)·림·최종 곱, 윗면 높이장 변위·노멀·u = −h(MPS_FLUID), **그림자 맵도 같은 변위·앞면 캐스터(깊이 전용 p385 판독, 컬링 추정)**. 노이즈 거칠기 생략 |
 | 절벽 `fld_cliff_mt`(그래프 2263802738) | cliff_lmp·cliff_gi·cliff_ao(TEXCOORD_2) + 시차 보정 큐브 pal_rad + 평행광 [판독 일부] | cliff_lmp 를 라이트맵으로 [근사] |
 | 오로라 `aurora*_mt`(그래프 474410661) | D = dodge(grad00, sat(alb·정점색·blendColor·utilityColor0)), rgb = D·(irr(N) + 광색·sat(N·L)) + overlay(D, grad01·utilityColor1), 알파 = alb.a·정점색.a·blendColor.a(애니)·mask.r·(1 + grad01.r). 정점 = 월드 + noise·utilityParameter0 [판독 FS 전체·VS] | 반사 항·정점 변위 뺌, 더하기(state 3 [추정]) |
 | 눈덩이 `fld_snow_mt`(그래프 4268919678) | 지면과 같은 구조(그늘 램프·IBL 두 항·림·최종 × snowball_alb), 국소 IBL snowball_rad/irr·irradianceColorScale 2.5 [판독] | 확산은 snowball_irr 큐브 그대로, 반사만 장면 rad [근사] |
@@ -1327,6 +1349,7 @@ step(pads: PadInput[]) {
 | 판독 대조(이 문서) | decomp grep: TickOrder 대상, SnowHandPos 뼈 사용, IsDeleteWait 본문·PLT 이름, L15 호출 6곳, FX 문자열 위치 | 판독 | 3.5·6.9·6.12·6.13.2·7.6 조정 |
 | 눈 자국 자료 | `cd F:/dev/mps && .venv/Scripts/python web/tools/analysis/hsmg402_fluid_assets.py` | 실행(도구) | `web/assets/hsmg402/fluid/`(fluid.json + 캐릭터 10명 붓 BC4_SNORM 직접 디코드 png 20) |
 | 눈 자국 식 대조(7.5) | `cd F:/dev/mps/web && npx tsx tools/check_hsmg402_fluid.ts` | 원본 기계어 에뮬 vs 웹 식 | 눈덩이 붓·캐릭터 붓 3종·지면 VS·fluid_normal 최대 오차 ≤ 3.2e-7, 블렌드 Add/Min/Max·Env 칸·붓 부호 — 오류 0 (화면·원본 실행 대조 아님) |
+| 상태 UI·버튼 글자(7.9) | `cd F:/dev/mps && .venv/Scripts/python web/tools/analysis/hsmg402_web_assets.py --only-ui` 후 `cd web && npx tsx tools/check_hsmg402_ui.ts` | 데이터 + 재구현 계산 + 참고 이미지 | 128 통과(이름판 이어짐·글자 겹침, 얼굴 맵 슬롯·UV 회귀 포함): 얼굴·이름 좌표 4모서리(bflyt 손 계산과 같음, 캡처 1.2 px 이내), 덮어쓰기(배율 −1·오른쪽 정렬), 애니 값, 이름·순위 문구, E003→E005, 전원 CPU 5판 + 시간 종료 1판의 SetRank 시점(탈락 프레임·최종 rank·시간 종료 전원) (화면 확인 아님) |
 
 **원본 게임 실행 대조는 없다.** 함수 단위 재구현 계산을 게임 전체 동작 검증으로 보지 않는다.
 
@@ -1400,14 +1423,15 @@ step(pads: PadInput[]) {
 | 12 | `SearchSafeAreaMovePosition` 정확한 식, `SearchRandMovePosition` 회전 부호 | CPU 목표(레벨 2·3 회피는 6.13.2 때문에 드묾) | NEON 쿼터니언 부분 정독(`ghidra_work/hsmg402_player/safe.s`부터) |
 | 13 | PlEvCol 캡슐의 축·길이 해석 | 피격 판정 범위 | `Engine::CreateCapsuleCollision` 판독 |
 | 14 | 모션 프레임 수(FSKA +0x40 필드 정의) | 피격 정지·던지기 시점 | BfresLibrary FrameCount 확인 |
-| 15 | UIMGTelop type 0/2/5/6 표시, UITimer TYPE → 레이아웃 | 결과 텔롭 | main `UIMGTelop::Create`·`hs::UITimer` 생성자 |
+| 15 | ~~UIMGTelop type 0/2/5/6 표시~~ **닫힘(7.7.1, engine/04_sound_flow)**. 타이머 In 시점은 닫힘: 단계 7 첫 프레임 START 텔롭 `Start` 직후 `MinigameUIControl(1)`(UITimer +0x58 = 1, [engine/05_ui.md 3](../engine/05_ui.md)). 남은 것: UITimer TYPE → 레이아웃, START/FINISH in·out 애니 길이(단계 7·12 길이·호루라기 시점), `FUN_710004b734` 단계 12 대기 값, `FADE_TIME_02` 길이, `StopBatch_Type(7,1)` 그룹 7 대상, 로캘 접미를 붙이는 위치 | 결과 텔롭·흐름 시간·BGM 페이드 | `hs::UITimer` 생성자, bflan 프레임 수, MG 표 로더, SystemAudio 판독 |
 | 16 | `MiniGameFinishPlayerUpCamera` 보간 식 | 결과 카메라 | main 클래스 판독 |
 | 17 | `SNOWBALL_FALL00`을 Crash/Disable에서 부를 때 재생인지 정지인지 | 이펙트 | `PlayFxTrigger` 인자 판독 |
 | 18 | SeMgr `CheckToEntry*` 중복 제거 규칙, 공끼리 HIT 소리의 L15 인자 | 소리 중복·크기 | SeMgr 디스어셈블 정독 |
-| 19 | ~~`SetSystemScaleVec`·`FluidMaterialParamChange`의 뜻~~ **닫힘(7.5)**: 앞은 damageActor 모델 배율, 뒤는 발 유체 붓 utilityParameter0. 남은 것: 유체 높이 RT 형식·M160 기본값·fld_clear 행 방향 | 눈 자국 깊이·방향 | NdRender RT 설정표(인덱스 0x15)·모델 렌더 자료 생성자 판독 또는 원본 실행 화면 |
+| 19 | ~~`SetSystemScaleVec`·`FluidMaterialParamChange`의 뜻~~ **닫힘(7.5)**: 앞은 damageActor 모델 배율, 뒤는 발 유체 붓 utilityParameter0. 홈 그늘 = 지면 자기 그림자(깊이 전용 p385 도 변위 [판독]). 남은 것: 유체 높이 RT 형식(화면 영향 작음, 7.5)·M160 기본값·fld_clear 행 방향, 그림자 패스가 shader_type 1 을 고르는지·그림자 패스 컬링(웹은 재질 컬링 그대로 [추정]) | 눈 자국 깊이·방향·홈 그늘 | NdRender RT 설정표(인덱스 0x15)·모델 렌더 자료 생성자 판독, nd 그림자 패스의 동적 키(shader_type)·래스터 상태 설정 코드, 또는 원본 실행 화면 |
 | 20 | 기반 흐름(main) 쪽 난수 소비, 단계 10~17 세부 분기, `ActorManager+0x90` 하위 4비트, 레이어 6·9 | 난수 상태 이어짐, 재도전 | main 흐름 처리기·ActorManager 판독 |
 | 21 | 재질: state_type·face_cull_type 뜻, texsrt 행렬 식(v 부호·회전), 정점색 미바인드 값(눈 최종 곱에는 영향 없음), 절벽·캐릭터 몸 그래프 나머지 식(옵션 체계·UV·기본색·라이트맵·램프·림·눈 그늘/IBL·오로라 FS 는 engine/03 으로 닫힘), 오로라 정점 변위(noise_alb 미수록)·반사 항, VFXB v40 GPU 셰이더 식(이미터 수치는 확정, engine/08_effects.md 11), ftrg 0x9101 필드·`YKD_VOL` 곡선, 조명 쪽 남은 것(그림자 bias 단위, 블룸 해상도·간격, 출력 sRGB 여부 판독 — 참고 이미지와는 sRGB 가정이 맞음. lightRotation 축·톤맵 5·`lut_blend`·fog 3값·aspect·확산 1/π 없음은 engine/07 로 닫힘), 절벽·바다 밝기 차(웹이 참고 이미지보다 어둡다: 절벽 (26,53,79) vs (42,72,104), 바다 (27,64,116) vs (36,91,128) — 절벽 gi·ao 섞기·물 셰이더 미판독), 사운드 프리셋 `]` 레코드·`snsp`·BGM 점프 Prm1 `1`, `SNOW_MAKE00` fx/se 동시 발동·`PC01` 라벨 치환 | 화면·소리 근사(로직 무관) | assets 노트 16절의 각 근거(셰이더·bex gfx·sound·ComFxTrigger 판독) |
 | 22 | 나머지 apx 121개(휴리스틱 실패) | 다른 미니게임 충돌(이 게임은 해석 완료) | PhysX 3.4 직렬화 소스 |
+| 23 | 상태 UI 이름: 처음 ID(GameWork 플레이어 칸 +0xe4)와 플레이어 번호의 관계, COM 이름 칸이 비어 있는지(게스트 번호에 COM 을 세는지), 부품 덮어쓰기 basicUsage 비트 1·2·4·글자 덮어쓰기 usage, 이름판 시스템 글꼴 모양(웹 CSS 근사), 같은 우선순위 레이아웃 그리는 순서 | 게스트 번호·이름판 글자 모양·겹침 순서(화면만) | `SetInitialPlayerID` 호출자, ui2d 부품 빌드, 스위치 공유 글꼴 — [engine/05_ui.md 11](../engine/05_ui.md) |
 
 ### 11.2 이번 통합의 조정·정정 모음
 
